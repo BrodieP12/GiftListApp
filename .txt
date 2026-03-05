@@ -1,0 +1,142 @@
+import {onCall, HttpsError} from "firebase-functions/v2/https";
+import * as admin from "firebase-admin";
+import axios from "axios";
+import * as cheerio from "cheerio";
+
+// Initialize Admin SDK
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+interface ScrapeResult {
+  title: string | null;
+  price: number | null;
+  image: string | null;
+  description: string | null;
+  url: string;
+}
+
+/**
+ * Helper: Extracts "19.99" from "$19.99" or "USD 19.99"
+ * @param {string} priceString The raw price string
+ * @return {number|null} The parsed price
+ */
+function parsePrice(priceString: string): number | null {
+  const match = priceString.match(/(\d+[.,]?\d*)/);
+  if (match) {
+    const cleanString = match[0].replace(/,/g, "");
+    return parseFloat(cleanString);
+  }
+  return null;
+}
+
+export const scrapeProduct = onCall(
+  {
+    timeoutSeconds: 60,
+    memory: "512MiB",
+    maxInstances: 10,
+    cors: true,
+  },
+  async (request) => {
+    const url = request.data.url;
+
+    console.log("Processing URL:", url);
+
+    if (!url || typeof url !== "string") {
+      throw new HttpsError(
+        "invalid-argument",
+        "The function must be called with a valid URL."
+      );
+    }
+
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+            "AppleWebKit/537.36 (KHTML, like Gecko) " +
+            "Chrome/115.0.0.0 Safari/537.36",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        timeout: 45000,
+      });
+
+      const html = response.data;
+      const $ = cheerio.load(html);
+
+      const result: ScrapeResult = {
+        title: null,
+        price: null,
+        image: null,
+        description: null,
+        url: url,
+      };
+
+      // Strategy 1: OpenGraph
+      result.title =
+        $("meta[property=\"og:title\"]").attr("content") ||
+        $("title").text().trim();
+
+      result.image =
+        $("meta[property=\"og:image\"]").attr("content") ||
+        $("meta[name=\"twitter:image\"]").attr("content") ||
+        null;
+
+      result.description =
+        $("meta[property=\"og:description\"]").attr("content") ||
+        $("meta[name=\"description\"]").attr("content") ||
+        null;
+
+      // Strategy 2: JSON-LD
+      if (!result.price) {
+        $("script[type=\"application/ld+json\"]").each((i, el) => {
+          try {
+            const json = JSON.parse($(el).html() || "{}");
+            if (json["@type"] === "Product") {
+              const offer = Array.isArray(json.offers) ?
+                json.offers[0] :
+                json.offers;
+              if (offer && offer.price) {
+                result.price = parseFloat(offer.price);
+              }
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        });
+      }
+
+      // Strategy 3: Selectors
+      if (!result.price) {
+        const priceSelectors = [
+          ".priceView-hero-price span", // Best Buy
+          ".large-goods-price",
+          "#priceblock_ourprice", // Amazon
+          ".a-price .a-offscreen",
+          "[itemprop=\"price\"]",
+        ];
+
+        for (const selector of priceSelectors) {
+          const text = $(selector).first().text().trim();
+          if (text) {
+            const price = parsePrice(text);
+            if (price) {
+              result.price = price;
+              break;
+            }
+          }
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Scraping failed:", error);
+      return {
+        title: null,
+        price: null,
+        image: null,
+        description: null,
+        url,
+      };
+    }
+  }
+);

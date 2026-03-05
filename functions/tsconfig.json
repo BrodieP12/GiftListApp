@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "outDir": "lib",
+    "sourceMap": true,
+    "strict": true,
+    "target": "es2021",  // or es2020
+    "skipLibCheck": true, // Add this to ignore library type errors
+    "esModuleInterop": true // Critical for importing axios/cheerio
+  },
+  "compileOnSave": true,
+  "include": [
+    "src"
+  ]
+}
