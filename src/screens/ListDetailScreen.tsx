@@ -13,9 +13,12 @@ import {
 import { StackScreenProps } from '@react-navigation/stack';
 import { AppStackParamList } from '../navigation/AppNavigator';
 import { GiftItemUI } from "../types/models";
+import { useAuth } from '../hooks/useAuth';
 
 // Define Props for the Screen based on your AppStackParamList
 type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
+
+
 
 interface GiftItemRowProps extends GiftItemUI {
   currentUserId: string;
@@ -103,11 +106,14 @@ export const GiftItemRow = ({
 // 1. ADDED `navigation` TO DESTRUCTURED PROPS
 export const ListDetailScreen = ({ route, navigation }: Props) => {
   const { listId, ownerId } = route.params;
+  const { user } = useAuth();
+
   const [items, setItems] = useState<GiftItemUI[]>([]);
   const [loading, setLoading] = useState(true);
+  
 
   // Mock current user - replace with your actual auth context later
-  const currentUserId = "temp-user-id"; 
+  const currentUserId = user?.uid ?? ''; 
   const isOwner = currentUserId === ownerId;
 
   useEffect(() => {
