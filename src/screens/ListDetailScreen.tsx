@@ -147,7 +147,7 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
 
     fetchListData(ownerId, listId,isOwner, setLoading, setItems);
     
-  });
+  }, [listId, ownerId, isOwner]);
 
   const handleToggleClaim = async (itemId: string, currentClaimer: string | null) => {
     if(!currentUserId){
