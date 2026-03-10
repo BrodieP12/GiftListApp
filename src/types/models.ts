@@ -2,6 +2,7 @@ export interface User {
   uid: string;
   email: string;
   displayName?: string;
+  isPremium?: boolean;
 }
 
 export interface GiftList {
@@ -57,13 +58,6 @@ export interface Feedback {
   text: string;
   type: 'bug' | 'feature' | 'general';
   createdAt: any;
-}
-
-export interface User {
-  uid: string;
-  email: string;
-  displayName?: string;
-  isPremium?: boolean; // <--- ADD THIS
 }
 
 export interface Friend {
