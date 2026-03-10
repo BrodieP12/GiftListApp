@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
-    View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity
+    View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity,
+    Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { ListService } from '../services/ListService';
@@ -39,8 +40,15 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     const handleCreateList = async () => {
         if (!user) return;
         const newTitle = `My List - ${new Date().toLocaleDateString()}`;
-        await ListService.createList(user.uid, newTitle);
-        fetchLists();
+        
+        try{
+            await ListService.createList(user.uid, newTitle);
+            await fetchLists();
+        } catch(error){
+            console.error("Error fetching lists.", error);
+            Alert.alert("There was an error fetching your lists. Are you connected to the internet?");
+        }
+        
     };
 
     const renderItem = ({ item }: { item: GiftList }) => (

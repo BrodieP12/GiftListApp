@@ -44,7 +44,7 @@ export const AdsService = {
     }
 
     if (interstitial && interstitial.loaded) {
-      interstitial.show();
+      await interstitial.show();
       // Load the next one
       this.loadInterstitial();
     } else {
