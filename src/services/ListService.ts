@@ -50,8 +50,12 @@ export const ListService = {
 
   async getSharedLists(userId: string): Promise<GiftList[]> {
     const q = query(collection(db, 'lists'), where('allowedUsers', 'array-contains', userId));
-    const snapshot = await getDocs(listsRef);
-    return snapshot.docs.map(d => d.data());
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as GiftList));
   },
 
   async deleteList(listId: string) {

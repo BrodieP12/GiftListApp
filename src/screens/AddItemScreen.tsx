@@ -89,7 +89,7 @@ export const AddItemScreen = () => {
 
     } catch (error) {
       console.log('Scrape failed silently', error);
-      // We don't alert the user here because they can just type it manually.
+      Alert.alert("Data Collection failed. Sending URL to review. Please type in the data manually.")
     } finally {
       setScraping(false);
     }

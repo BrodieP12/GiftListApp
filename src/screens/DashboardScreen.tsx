@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+// src/screens/DashboardScreen.tsx
+import React, { useState, useCallback } from 'react';
 import { 
-  View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert 
+  View, Text, FlatList, StyleSheet, ActivityIndicator 
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { ListService } from '../services/ListService';
@@ -10,7 +11,6 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { AppStackParamList } from '../navigation/AppNavigator';
 import { Button } from '../components/common/Button';
 
-// Type the navigation prop
 type DashboardNavProp = StackNavigationProp<AppStackParamList, 'Dashboard'>;
 
 export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }) => {
@@ -23,7 +23,6 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     setLoading(true);
     try {
       const myLists = await ListService.getOwnedLists(user.uid);
-      // In future: const sharedLists = await ListService.getSharedLists(user.uid);
       setLists(myLists);
     } catch (error) {
       console.error(error);
@@ -32,99 +31,92 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     }
   };
 
-  // Reload lists when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchLists();
     }, [user])
   );
 
-  const handleCreateList = async () => {
-    if (!user) return;
-    const newTitle = `My List - ${new Date().toLocaleDateString()}`;
-    await ListService.createList(user.uid, newTitle);
-    fetchLists(); // Refresh
-  };
-
   const renderItem = ({ item }: { item: GiftList }) => (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={() => {
-        // DEBUG LOG: Ensure we actually have an ID here
-        console.log("Navigating to list:", item.id); 
-        
-        navigation.navigate('ListDetail', { 
-          listId: item.id,   // <--- MUST be 'listId', not 'id'
-          ownerId: item.ownerId 
-        });
-      }}
-    >
+    <View style={styles.card}>
       <View>
         <Text style={styles.cardTitle}>{item.title}</Text>
         <Text style={styles.cardSub}>Owner: Me</Text>
       </View>
-      <Text style={styles.arrow}>→</Text>
-    </TouchableOpacity>
+      <Button 
+        title="View →" 
+        variant="secondary"
+        onPress={() => {
+          navigation.navigate('ListDetail', { 
+            listId: item.id,
+            ownerId: item.ownerId 
+          });
+        }} 
+      />
+    </View>
   );
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+  const renderListHeader = () => (
+    <View style={styles.headerContainer}>
+      <View style={styles.headerRow}>
         <Text style={styles.welcome}>Hello, {user?.email}</Text>
         <Button
           title="Logout"
           variant="danger"
           onPress={logout}
-          style={ styles.logout }
         />
       </View>
-
       <Text style={styles.sectionTitle}>My Lists</Text>
-      
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator size="large" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+        </View>
       ) : (
         <FlatList
           data={lists}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          ListHeaderComponent={renderListHeader}
+          // Explicitly constrain the FlatList to the parent view
+          style={styles.list} 
+          contentContainerStyle={styles.listContent} 
+          // Force iOS/Android to allow vertical dragging even if items are few
+          alwaysBounceVertical={true} 
           ListEmptyComponent={
             <Text style={styles.empty}>No lists yet. Create one!</Text>
           }
         />
       )}
-
-      {/* FAB (Floating Action Button) to Create List */}
-      <Button
-        title="+"
-        variant="primary"
-        onPress={handleCreateList}
-        style={styles.fab}
-        textStyle={styles.fabText}
-        />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa', padding: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  container: { flex: 1, backgroundColor: '#f8f9fa' },
+  
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  
+  // Apply flex: 1 directly to the FlatList so it knows where the screen ends
+  list: { flex: 1 },
+  listContent: { padding: 20, paddingBottom: 100 }, 
+  
+  headerContainer: { marginBottom: 15 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  
   welcome: { fontSize: 16, fontWeight: 'bold' },
-  logout: { backgroundColor: 'red' },
-  sectionTitle: { fontSize: 22, fontWeight: '800', marginBottom: 15, color: '#333' },
+  sectionTitle: { fontSize: 22, fontWeight: '800', color: '#333' },
+  
   card: { 
     backgroundColor: 'white', padding: 20, borderRadius: 12, marginBottom: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2
+    elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }
   },
   cardTitle: { fontSize: 18, fontWeight: '600' },
   cardSub: { color: 'gray', marginTop: 4 },
-  arrow: { fontSize: 20, color: '#ccc' },
   empty: { textAlign: 'center', marginTop: 40, color: '#888' },
-  fab: {
-    position: 'absolute', bottom: 30, right: 30,
-    backgroundColor: '#007AFF', width: 60, height: 60, borderRadius: 30,
-    justifyContent: 'center', alignItems: 'center', elevation: 5
-  },
-  fabText: { color: 'white', fontSize: 32, marginTop: -4 }
 });
