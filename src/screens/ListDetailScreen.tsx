@@ -1,26 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
-  Linking, 
-  FlatList, 
-  SafeAreaView,
-  ActivityIndicator, 
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
   Alert
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { AppStackParamList } from '../navigation/AppNavigator';
 import { GiftItemUI, ItemClaim } from "../types/models";
 import { useAuth } from '../hooks/useAuth';
+import { useGiftList } from '../hooks/useGiftList';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { GiftItemRow } from '../components/lists/GiftItemRow';
 import { ClaimService } from '../services/ClaimService';
 import { ListService } from '../services/ListService';
-import { FloatingAction } from 'react-native-floating-action'
 
-// Define Props for the Screen based on your AppStackParamList
-type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
 
 export async function fetchListData(ownerId: string, listId: string, isOwner: boolean, setLoading: any, setItems: any) {
       setLoading(true);
@@ -46,86 +43,8 @@ export async function fetchListData(ownerId: string, listId: string, isOwner: bo
       }
 };
 
-
-interface GiftItemRowProps extends GiftItemUI {
-  currentUserId: string;
-  isOwner: boolean;
-  onToggleClaim: (itemId: string, currentClaimer: string | null) => void;
-}
-
-/**
- * Individual Row Component for a Gift Item
- */
-export const GiftItemRow = ({ 
-  id, name, description, price = 0, imageUri, url, substitutions, claimStatus, currentUserId, isOwner, onToggleClaim 
-}: GiftItemRowProps) => {
-  const isClaimed = Boolean(claimStatus?.claimedBy);
-  const isClaimedByMe = claimStatus?.claimedBy === currentUserId;
-  const displayPrice = price > 0 ? `$${price.toFixed(2)}` : 'Price Undetermined';
-
-  const handleLinkPress = () => {
-    if (url) {
-      Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
-    }
-  };
-
-  return (
-    <View style={[styles.card, isClaimed && !isClaimedByMe && styles.cardDimmed]}>
-      {/* Image Section */}
-      {imageUri ? (
-        <Image source={{ uri: imageUri }} style={styles.image} />
-      ) : (
-        <View style={styles.placeholderImage}>
-          <Text style={styles.placeholderText}>No Image</Text>
-        </View>
-      )}
-
-      {/* Content Section */}
-      <View style={styles.contentContainer}>
-        <View style={styles.headerRow}>
-          <Text style={styles.name} numberOfLines={2}>{name}</Text>
-          <Text style={styles.price}>{displayPrice}</Text>
-        </View>
-
-        {description ? (
-          <Text style={styles.description} numberOfLines={3}>{description}</Text>
-        ) : null}
-
-        <View style={styles.badgeRow}>
-          {substitutions && (
-            <View style={styles.subBadge}>
-              <Text style={styles.subBadgeText}>🔄 Substitutions OK</Text>
-            </View>
-          )}
-          {url && (
-            <TouchableOpacity onPress={handleLinkPress}>
-              <Text style={styles.linkText}>🔗 View Link</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Claim Action */}
-      {!isOwner && (
-        <TouchableOpacity 
-          style={[
-            styles.claimBtn, 
-            isClaimedByMe ? styles.claimBtnMine : isClaimed ? styles.claimBtnTaken : null
-          ]}
-          onPress={() => onToggleClaim(id, claimStatus?.claimedBy || null)}
-          disabled={isClaimed && !isClaimedByMe}
-        >
-          <Text style={[
-            styles.claimBtnText,
-            isClaimed && !isClaimedByMe && styles.claimBtnTextTaken
-          ]}>
-            {isClaimedByMe ? 'Unclaim' : isClaimed ? 'Claimed' : 'Claim'}
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-};
+// Define Props for the Screen based on your AppStackParamList
+type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
 
 /**
  * Main List Detail Screen Component
@@ -134,42 +53,11 @@ export const GiftItemRow = ({
 export const ListDetailScreen = ({ route, navigation }: Props) => {
   const { listId, ownerId } = route.params;
   const { user } = useAuth();
+  const { items, loading, isOwner, toggleClaim } = useGiftList(listId, ownerId);
 
-  const [items, setItems] = useState<GiftItemUI[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-
-  // Mock current user - replace with your actual auth context later
-  const currentUserId = user?.uid ?? ''; 
-  const isOwner = currentUserId === ownerId;
-
-  useEffect(() => {
-
-    fetchListData(ownerId, listId,isOwner, setLoading, setItems);
-    
-  }, [listId, ownerId, isOwner]);
-
-  const handleToggleClaim = async (itemId: string, currentClaimer: string | null) => {
-    if(!currentUserId){
-      return;
-    }
-
-    try{
-      if(currentClaimer == currentUserId) {
-        // User already claimed this - unclaim it
-        await ClaimService.unclaimItem(itemId);
-      } else {
-        // Claim the item for the current user
-        await ClaimService.claimItem(itemId, currentUserId, ownerId, listId);
-      }
-      // Refresh the list so the UI reflects the new claim state
-      await fetchListData(itemId, listId, isOwner, setLoading, setItems);
-    } catch(error){
-      console.error('Failed to toggle claim.', error);
-      Alert.alert('Error','Could not update the claim. Please try again.');
-    }
-    
-    
+  const handleToggleClaim = (item: GiftItemUI) => {
+    const itemId = item.id;
+    const currentClaimer = item.claimStatus?.claimedBy ?? null;
     // TODO: Implement Firebase update logic
     console.log(`Toggling claim for item ${itemId}. Current claimer: ${currentClaimer}`);
   };
@@ -190,9 +78,9 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
         // 2. ADDED PADDING TO BOTTOM OF LIST SO FAB DOESN'T COVER LAST ITEM
         contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
         renderItem={({ item }) => (
-          <GiftItemRow 
-            {...item} 
-            currentUserId={currentUserId}
+          <GiftItemRow
+            item={item}
+            currentUserId={user?.uid ?? ''}
             isOwner={isOwner}
             onToggleClaim={handleToggleClaim}
           />
@@ -206,7 +94,7 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
 
       {/* 3. ADDED THE FLOATING ACTION BUTTON (FAB) BACK HERE */}
       {isOwner && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.fab}
           onPress={() => navigation.navigate('AddItem', { listId: listId })}
         >
@@ -346,25 +234,24 @@ const styles = StyleSheet.create({
 
   // 4. ADDED STYLES FOR THE FAB
   fab: {
-    position: 'absolute', 
-    bottom: 30, 
+    position: 'absolute',
+    bottom: 30,
     right: 30,
-    backgroundColor: '#007AFF', 
-    width: 120, 
-    height: 50, 
+    backgroundColor: '#007AFF',
+    width: 120,
+    height: 50,
     borderRadius: 25,
-    justifyContent: 'center', 
-    alignItems: 'center', 
+    justifyContent: 'center',
+    alignItems: 'center',
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
-  fabText: { 
-    color: '#fff', 
-    fontWeight: 'bold', 
-    fontSize: 16 
+  fabText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16
   }
 });
-

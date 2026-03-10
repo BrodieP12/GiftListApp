@@ -112,7 +112,9 @@ export const AddItemScreen = () => {
         price: price ? parseFloat(price) : 0, 
         description,
         url,
-        listId
+        listId,
+        imageUri: imageUri ?? undefined,
+        substitutions
       });
       navigation.goBack();
     } catch (e) {

@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export interface User {
   uid: string;
   email: string;
@@ -36,7 +38,7 @@ export interface ItemClaim {
   item: GiftItem;
   claimedBy: string;      // User UID of the guest who bought it
   listOwnerId: string;    // Needed for Security Rules to block the owner
-  claimedAt: any;
+  claimedAt: Timestamp;
   onToggleClaim: (itemId: string, claimedBy: string | null) => void;
 }
 
@@ -61,5 +63,9 @@ export interface Feedback {
 }
 
 export interface Friend {
-
+  id : string, 
+  userId : string, // requester 
+  friendId : string, // recipient 
+  status : 'pending' | 'accepted', 
+  createdAt: Timestamp
 }
