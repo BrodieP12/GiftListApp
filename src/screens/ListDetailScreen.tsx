@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -8,12 +8,16 @@ import {
   Linking, 
   FlatList, 
   SafeAreaView,
-  ActivityIndicator 
+  ActivityIndicator, 
+  Alert
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { AppStackParamList } from '../navigation/AppNavigator';
-import { GiftItemUI } from "../types/models";
+import { GiftItemUI, ItemClaim } from "../types/models";
 import { useAuth } from '../hooks/useAuth';
+import { ClaimService } from '../services/ClaimService';
+import { ListService } from '../services/ListService';
+import { FloatingAction } from 'react-native-floating-action'
 
 // Define Props for the Screen based on your AppStackParamList
 type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
@@ -117,10 +121,33 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
   const isOwner = currentUserId === ownerId;
 
   useEffect(() => {
-    // TODO: Implement your Firebase fetch logic here using listId
-    // For now, we simulate a load
-    setLoading(false);
-  }, [listId]);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const rawItems = await ListService.getItems(listId);
+
+        let claims: Record<string, ItemClaim> = {};
+        if (!isOwner) {
+          claims = await ClaimService.getClaimsForList(ownerId, listId);
+        }
+
+        const merged: GiftItemUI[] = rawItems.map(item => ({
+          ...item,
+          claimStatus: claims[item.id] ?? null,
+        }));
+
+        setItems(merged);
+      } catch (error) {
+        console.error('Failed to load list data:', error);
+        Alert.alert('Error', 'Could not load the list. Please check your connection and try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    
+  }, [listId, ownerId, isOwner]);
 
   const handleToggleClaim = (itemId: string, currentClaimer: string | null) => {
     // TODO: Implement Firebase update logic

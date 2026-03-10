@@ -7,7 +7,8 @@ import {
   Linking, 
   Alert 
 } from 'react-native';
-import { GiftItemUI } from '../../types/models';
+import { GiftItemUI } from '../../types/models'; // Adjust path if necessary
+import { PricingCard, lightColors } from '@rneui/base';
 
 interface GiftItemRowProps {
   item: GiftItemUI;
@@ -70,20 +71,23 @@ export const GiftItemRow = ({
         <Text style={styles.name}>{item.name}</Text>
         
         {/* Price & Link Row */}
-        <View style={styles.metaRow}>
-          {item.price ? (
-            <Text style={styles.price}>${item.price.toFixed(2)}</Text>
-          ) : null}
+        <PricingCard
+          color={lightColors.primary}
+          title="Free"
+          price={item.price ? item.price : ''}
+          info={['1 User', 'Basic Support', 'All Core Features']}
+          button={{ title: ' GET STARTED', icon: 'flight-takeoff' }}
+        />
           
-          {item.url && (
-            <TouchableOpacity onPress={handleOpenLink}>
-              <Text style={styles.link}>View Online ↗</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Strict boolean casting prevents an empty string "" from being rendered as a text node */}
+        {!!item.url && (
+          <TouchableOpacity onPress={handleOpenLink}>
+            <Text style={styles.link}>View Online ↗</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* 2. Action Section */}
+      {/* 2. Action Section - ADDED PREVIOUSLY MISSING CALL */}
       <View style={styles.actionContainer}>
         {renderActionButton()}
       </View>
@@ -99,7 +103,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     alignItems: 'center',
-    // Shadow for depth
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },

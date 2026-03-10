@@ -5,7 +5,8 @@ import {
   ActivityIndicator, 
   StyleSheet, 
   ViewStyle, 
-  TextStyle 
+  TextStyle,
+  StyleProp // Added to support array styles
 } from 'react-native';
 
 interface ButtonProps {
@@ -14,8 +15,10 @@ interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'danger';
   loading?: boolean;
   disabled?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  // USE StyleProp: This tells TypeScript that users can pass an array of styles 
+  // (e.g., style={[styles.base, styles.active]}) instead of just a single object.
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 export const Button = ({
@@ -28,9 +31,8 @@ export const Button = ({
   textStyle,
 }: ButtonProps) => {
   
-  // Base Styles
   const getBackgroundColor = () => {
-    if (disabled) return '#A0A0A0'; // Grayed out when disabled
+    if (disabled) return '#A0A0A0'; 
     switch (variant) {
       case 'secondary': return '#E0E0E0';
       case 'danger': return '#FF3B30';
@@ -49,7 +51,7 @@ export const Button = ({
       style={[
         styles.container,
         { backgroundColor: getBackgroundColor() },
-        style
+        style // Correctly positioned at the end to override base styles
       ]}
       onPress={onPress}
       disabled={disabled || loading}
