@@ -49,14 +49,20 @@ export const ListService = {
   },
 
   async getSharedLists(userId: string): Promise<GiftList[]> {
-    const q = query(collection(db, 'lists'), where('allowedUsers', 'array-contains', userId));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as GiftList));
-  },
+  const q = query(collection(db, 'lists'), where('allowedUsers', 'array-contains', userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+          id: doc.id,
+          ownerId: data.ownerId,
+          title: data.title,
+          isPrivate: data.isPrivate,
+          allowedUsers: data.allowedUsers || [],
+          createdAt: data.createdAt
+      } as GiftList;
+  });
+}, 
 
   async deleteList(listId: string) {
     await deleteDoc(doc(db, 'lists', listId));
