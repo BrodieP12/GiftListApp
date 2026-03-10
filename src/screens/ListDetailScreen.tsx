@@ -22,6 +22,29 @@ import { FloatingAction } from 'react-native-floating-action'
 // Define Props for the Screen based on your AppStackParamList
 type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
 
+export async function fetchListData(ownerId: string, listId: string, isOwner: boolean, setLoading: any, setItems: any) {
+      setLoading(true);
+      try {
+        const rawItems = await ListService.getItems(listId);
+
+        let claims: Record<string, ItemClaim> = {};
+        if (!isOwner) {
+          claims = await ClaimService.getClaimsForList(ownerId, listId);
+        }
+
+        const merged: GiftItemUI[] = rawItems.map(item => ({
+          ...item,
+          claimStatus: claims[item.id] ?? null,
+        }));
+
+        setItems(merged);
+      } catch (error) {
+        console.error('Failed to load list data:', error);
+        Alert.alert('Error', 'Could not load the list. Please check your connection and try again.');
+      } finally {
+        setLoading(false);
+      }
+};
 
 
 interface GiftItemRowProps extends GiftItemUI {
@@ -121,35 +144,32 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
   const isOwner = currentUserId === ownerId;
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const rawItems = await ListService.getItems(listId);
 
-        let claims: Record<string, ItemClaim> = {};
-        if (!isOwner) {
-          claims = await ClaimService.getClaimsForList(ownerId, listId);
-        }
-
-        const merged: GiftItemUI[] = rawItems.map(item => ({
-          ...item,
-          claimStatus: claims[item.id] ?? null,
-        }));
-
-        setItems(merged);
-      } catch (error) {
-        console.error('Failed to load list data:', error);
-        Alert.alert('Error', 'Could not load the list. Please check your connection and try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchListData(ownerId, listId,isOwner, setLoading, setItems);
     
-  }, [listId, ownerId, isOwner]);
+  });
 
-  const handleToggleClaim = (itemId: string, currentClaimer: string | null) => {
+  const handleToggleClaim = async (itemId: string, currentClaimer: string | null) => {
+    if(!currentUserId){
+      return;
+    }
+
+    try{
+      if(currentClaimer == currentUserId) {
+        // User already claimed this - unclaim it
+        await ClaimService.unclaimItem(itemId);
+      } else {
+        // Claim the item for the current user
+        await ClaimService.claimItem(itemId, currentUserId, ownerId, listId);
+      }
+      // Refresh the list so the UI reflects the new claim state
+      await fetchListData(itemId, listId, isOwner, setLoading, setItems);
+    } catch(error){
+      console.error('Failed to toggle claim.', error);
+      Alert.alert('Error','Could not update the claim. Please try again.');
+    }
+    
+    
     // TODO: Implement Firebase update logic
     console.log(`Toggling claim for item ${itemId}. Current claimer: ${currentClaimer}`);
   };
@@ -347,3 +367,4 @@ const styles = StyleSheet.create({
     fontSize: 16 
   }
 });
+
