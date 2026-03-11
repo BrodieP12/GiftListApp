@@ -1,3 +1,12 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  Alert
 // screens/ListDetailScreen.tsx
 import React, { useCallback } from 'react';
 import {
@@ -57,6 +66,9 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
           <GiftItemRow
             item={item}
             currentUserId={user?.uid ?? ''}
+          <GiftItemRow
+            item={item}
+            currentUserId={user?.uid ?? ''}
             isOwner={isOwner}
             onToggleClaim={handleToggleClaim}
           />
@@ -69,6 +81,7 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
       />
 
       {isOwner && (
+        <TouchableOpacity
         <TouchableOpacity
           style={styles.fab}
           onPress={() => navigation.navigate('AddItem', { listId: listId })}
@@ -104,11 +117,18 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     bottom: 30,
+    position: 'absolute',
+    bottom: 30,
     right: 30,
     backgroundColor: '#007AFF',
     width: 120,
     height: 50,
+    backgroundColor: '#007AFF',
+    width: 120,
+    height: 50,
     borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
@@ -117,6 +137,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  fabText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16
   fabText: {
     color: '#fff',
     fontWeight: 'bold',
