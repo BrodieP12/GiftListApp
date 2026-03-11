@@ -71,13 +71,11 @@ export const GiftItemRow = ({
         <Text style={styles.name}>{item.name}</Text>
         
         {/* Price & Link Row */}
-        <PricingCard
-          color={lightColors.primary}
-          title="Free"
-          price={item.price ? item.price : ''}
-          info={['1 User', 'Basic Support', 'All Core Features']}
-          button={{ title: ' GET STARTED', icon: 'flight-takeoff' }}
-        />
+        <View style={styles.metaRow}>
+          {item.price ? (
+            <Text style={styles.price}>${item.price.toFixed(2)}</Text>
+          ) : null}
+        </View>
           
         {/* Strict boolean casting prevents an empty string "" from being rendered as a text node */}
         {!!item.url && (

@@ -1,3 +1,4 @@
+// File: src/screens/AddItemScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Switch, Image, ScrollView, Platform, KeyboardAvoidingView
@@ -14,8 +15,6 @@ export const AddItemScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<AddItemRouteProp>();
   
-
-
   // Destructure listId safely
   const { listId } = route.params || {}; 
 
@@ -27,11 +26,15 @@ export const AddItemScreen = () => {
   const [substitutions, setSubstitutions] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
 
-  const handlePickImage = async() => {
+  // Loading States
+  const [submitting, setSubmitting] = useState(false);
+  const [scraping, setScraping] = useState(false);
+
+  const handlePickImage = async () => {
     // Request permission first
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-    if(!permissionResult.granted){
+    if (!permissionResult.granted) {
       Alert.alert(
         "Permission Required",
         "You need to grant photo library access to upload an image."
@@ -41,25 +44,18 @@ export const AddItemScreen = () => {
 
     // Launch the picker
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8
     });
 
-    if(!result.canceled){
+    if (!result.canceled) {
       setImageUri(result.assets[0].uri);
     }
   };
 
-  // Loading States
-  const [submitting, setSubmitting] = useState(false);
-  const [scraping, setScraping] = useState(false);
-
-
-   const toggleSwitch = () => setSubstitutions(previousState => !previousState);
-
-    
+  const toggleSwitch = () => setSubstitutions(previousState => !previousState);
 
   // Safety Check: If listId is missing, warn the user immediately.
   useEffect(() => {
@@ -68,34 +64,27 @@ export const AddItemScreen = () => {
         { text: "Go Back", onPress: () => navigation.goBack() }
       ]);
     }
-  }, [listId]);
+  }, [listId, navigation]);
 
-  // --- NEW: Handle URL Paste & Scrape ---
+  // Handle URL Paste & Scrape
   const handleUrlBlur = async () => {
     if (!url || url.length < 4) return; // Don't scrape empty or short text
 
     setScraping(true);
     try {
-      // Call the Cloud Function via our Service
       const data = await RetailerService.fetchItemMetadata(url);
 
       // Auto-fill fields if data was found
       if (data.title) setName(data.title);
       if (data.price) setPrice(data.price.toString());
       if (data.description) setDescription(data.description);
-      
-      // Optional: You could also save the image URL here if you have an image field
-      // if (data.image) setImageUrl(data.image);
-
     } catch (error) {
       console.log('Scrape failed silently', error);
-      Alert.alert("Data Collection failed. Sending URL to review. Please type in the data manually.")
+      Alert.alert("Data Collection failed. Sending URL to review. Please type in the data manually.");
     } finally {
       setScraping(false);
     }
   };
-
-
 
   const handleAdd = async () => {
     if (!listId) return;
@@ -112,7 +101,9 @@ export const AddItemScreen = () => {
         price: price ? parseFloat(price) : 0, 
         description,
         url,
-        listId
+        listId,
+        imageUri: imageUri ?? '',
+        substitutions
       });
       navigation.goBack();
     } catch (e) {
@@ -129,94 +120,100 @@ export const AddItemScreen = () => {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}>
-      
-      {/* 1. MOVED LINK TO TOP (UX Best Practice: Paste link first to auto-fill the rest) */}
-      <Text style={styles.label}>Link (Optional)</Text>
-      <View style={styles.inputContainer}>
+        
+        {/* 1. Image Picker (Extracted from inputContainer to fix layout overlap) */}
+        <Text style={styles.label}>Photo (Optional)</Text>
         <TouchableOpacity style={styles.imageBtn} onPress={handlePickImage}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.image} />
-        ) : (
-          <Text style={styles.imageBtnText}>+ Add Photo</Text>
-        )}
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.image} />
+          ) : (
+            <Text style={styles.imageBtnText}>+ Add Photo</Text>
+          )}
         </TouchableOpacity>
-        <TextInput 
-          style={[styles.input, { paddingRight: 40, marginBottom: 0 }]} 
-          placeholder="https://..." 
-          autoCapitalize="none"
-          value={url} 
-          onChangeText={setUrl} 
-          onBlur={handleUrlBlur} 
-        />
-        {scraping && (
-          <ActivityIndicator 
-            style={styles.loadingIcon} 
-            color="#007AFF" 
-          />
-        )}
-      </View>
-      <Text style={styles.helperText}>Paste a link and tap away to auto-fill details!</Text>
 
-      {/* 2. Standard Fields */}
-      <Text style={styles.label}>Item Name</Text>
-      <TextInput 
-        style={styles.input} 
-        placeholder="e.g. Lego Star Wars Set" 
-        value={name} 
-        onChangeText={setName} 
-      />
-      <Text style={styles.label}>Allow Substitutions?</Text>
-      <Switch
-          trackColor={{false: '#767577', true: '#81b0ff'}}
+        {/* 2. Link & Scraper */}
+        <Text style={styles.label}>Link (Optional)</Text>
+        <View style={styles.inputContainer}>
+          <TextInput 
+            style={[styles.input, { paddingRight: 40, marginBottom: 0 }]} 
+            placeholder="https://..." 
+            autoCapitalize="none"
+            value={url} 
+            onChangeText={setUrl} 
+            onBlur={handleUrlBlur} 
+          />
+          {/* ActivityIndicator scopes purely to the TextInput now */}
+          {scraping && (
+            <ActivityIndicator 
+              style={styles.loadingIcon} 
+              color="#007AFF" 
+            />
+          )}
+        </View>
+        <Text style={styles.helperText}>Paste a link and tap away to auto-fill details!</Text>
+
+        {/* 3. Standard Fields */}
+        <Text style={styles.label}>Item Name</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="e.g. Lego Star Wars Set" 
+          value={name} 
+          onChangeText={setName} 
+        />
+        
+        <Text style={styles.label}>Allow Substitutions?</Text>
+        <Switch
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
           thumbColor={substitutions ? '#f5dd4b' : '#f4f3f4'}
           ios_backgroundColor="#3e3e3e"
           onValueChange={toggleSwitch}
           value={substitutions}
-      />
-      <Text style={styles.label}>Price (Optional)</Text>
-      <TextInput 
-        style={styles.input} 
-        placeholder="0.00" 
-        keyboardType="numeric"
-        value={price} 
-        onChangeText={setPrice} 
-      />
+        />
+        
+        <Text style={styles.label}>Price (Optional)</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder="0.00" 
+          keyboardType="numeric"
+          value={price} 
+          onChangeText={setPrice} 
+        />
 
-      <Text style={styles.label}>Description (Optional)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Size, color, or specific details"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-      />
+        <Text style={styles.label}>Description (Optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Size, color, or specific details"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+        />
 
-      {/* 3. Submit Button */}
-      <TouchableOpacity 
-        style={styles.btn} 
-        onPress={handleAdd}
-        disabled={submitting || scraping} // Disable while working
-      >
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.btnText}>Save Item</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+        {/* 4. Submit Button */}
+        <TouchableOpacity 
+          style={styles.btn} 
+          onPress={handleAdd}
+          disabled={submitting || scraping} 
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>Save Item</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 5, color: '#333' },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 5, color: '#333', marginTop: 10 },
   
-  // Updated Input Styling for the Loading Icon
   inputContainer: { position: 'relative', marginBottom: 5 },
   input: { 
     borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, 
@@ -240,11 +237,10 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
     overflow: 'hidden',
   },
   imageBtnText: { color: '#666', fontSize: 16, fontWeight: '600' },
   image: { width: '100%', height: '100%' },
   scrollContent: { padding: 20, paddingBottom: 40 },
-
 });
