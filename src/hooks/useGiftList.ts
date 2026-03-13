@@ -33,7 +33,7 @@ export const useGiftList = (listId: string, ownerId: string) => {
       } 
       // If Guest -> Fetch claims and merge them
       else {
-        const claimsMap = await ClaimService.getClaimsForList(ownerId);
+        const claimsMap = await ClaimService.getClaimsForList(ownerId, listId);
         
         const mergedItems = rawItems.map(item => ({
           ...item,
@@ -73,7 +73,7 @@ export const useGiftList = (listId: string, ownerId: string) => {
       } 
       // CASE 2: Item is free
       else {
-        await ClaimService.claimItem(item.id, user.uid, ownerId);
+        await ClaimService.claimItem(item.id, user.uid, ownerId, listId);
       }
 
       // Refresh to ensure we have the latest server state (prevents race conditions)

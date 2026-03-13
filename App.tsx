@@ -3,13 +3,15 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/hooks/useAuth';
 import { RootNavigator } from './src/navigation/AppNavigator';
+import { ThemeProvider } from './src/theme/ThemeContext';
 
 export default function App() {
   return (
-    // 1. Provide Authentication Context to the entire app tree
-    <AuthProvider>
-      <RootNavigator />
-      <StatusBar style="auto" />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <RootNavigator />
+        <StatusBar style="auto" />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
