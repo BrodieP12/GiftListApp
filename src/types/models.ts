@@ -13,7 +13,8 @@ export interface GiftList {
   title: string;
   isPrivate: boolean;
   allowedUsers: string[]; // Array of User UIDs
-  createdAt: any;         // Firestore Timestamp
+  createdAt: Timestamp; // Firestore Timestamp
+  shareCode: string;
 }
 
 export interface GiftItem {
@@ -24,7 +25,7 @@ export interface GiftItem {
   price?: number;
   imageUri?: string;
   url?: string;           // External retailer URL
-  createdAt?: any;
+  createdAt?: Timestamp;
   substitutions: boolean;
 }
 
@@ -59,7 +60,10 @@ export interface Feedback {
   userEmail: string;
   text: string;
   type: 'bug' | 'feature' | 'general';
-  createdAt: any;
+  createdAt: Timestamp;
+  platform?: string;
+  osVersion?: string | number;
+  appVersion?: string;
 }
 
 export interface Friend {

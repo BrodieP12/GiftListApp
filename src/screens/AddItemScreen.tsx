@@ -8,12 +8,14 @@ import { AppStackParamList } from '../navigation/types';
 import { ListService } from '../services/ListService';
 import { RetailerService } from '../services/RetailerService';
 import * as ImagePicker from 'expo-image-picker';
+import { useAppTheme } from '../theme/ThemeContext';
 
 type AddItemRouteProp = RouteProp<AppStackParamList, 'AddItem'>;
 
 export const AddItemScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<AddItemRouteProp>();
+  const { colors, isDarkMode } = useAppTheme();
   
   // Destructure listId safely
   const { listId } = route.params || {}; 
@@ -114,11 +116,11 @@ export const AddItemScreen = () => {
     }
   };
 
-  if (!listId) return <View style={styles.container} />;
+  if (!listId) return <View style={[styles.container, { backgroundColor: colors.background }]} />;
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
@@ -127,8 +129,8 @@ export const AddItemScreen = () => {
       >
         
         {/* 1. Image Picker (Extracted from inputContainer to fix layout overlap) */}
-        <Text style={styles.label}>Photo (Optional)</Text>
-        <TouchableOpacity style={styles.imageBtn} onPress={handlePickImage}>
+        <Text style={[styles.label, { color: colors.text }]}>Photo (Optional)</Text>
+        <TouchableOpacity style={[styles.imageBtn, { backgroundColor: isDarkMode ? '#222' : '#f0f0f0', borderColor: colors.border }]} onPress={handlePickImage}>
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.image} />
           ) : (
@@ -137,11 +139,12 @@ export const AddItemScreen = () => {
         </TouchableOpacity>
 
         {/* 2. Link & Scraper */}
-        <Text style={styles.label}>Link (Optional)</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Link (Optional)</Text>
         <View style={styles.inputContainer}>
           <TextInput 
-            style={[styles.input, { paddingRight: 40, marginBottom: 0 }]} 
-            placeholder="https://..." 
+            style={[styles.input, { paddingRight: 40, marginBottom: 0, backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]} 
+            placeholder="https://..."
+            placeholderTextColor={colors.textSecondary} 
             autoCapitalize="none"
             value={url} 
             onChangeText={setUrl} 
@@ -155,18 +158,19 @@ export const AddItemScreen = () => {
             />
           )}
         </View>
-        <Text style={styles.helperText}>Paste a link and tap away to auto-fill details!</Text>
+        <Text style={[styles.helperText, { color: colors.textSecondary }]}>Paste a link and tap away to auto-fill details!</Text>
 
         {/* 3. Standard Fields */}
-        <Text style={styles.label}>Item Name</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Item Name</Text>
         <TextInput 
-          style={styles.input} 
+          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]} 
+          placeholderTextColor={colors.textSecondary}
           placeholder="e.g. Lego Star Wars Set" 
           value={name} 
           onChangeText={setName} 
         />
         
-        <Text style={styles.label}>Allow Substitutions?</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Allow Substitutions?</Text>
         <Switch
           trackColor={{ false: '#767577', true: '#81b0ff' }}
           thumbColor={substitutions ? '#f5dd4b' : '#f4f3f4'}
@@ -175,18 +179,20 @@ export const AddItemScreen = () => {
           value={substitutions}
         />
         
-        <Text style={styles.label}>Price (Optional)</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Price (Optional)</Text>
         <TextInput 
-          style={styles.input} 
+          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]} 
+          placeholderTextColor={colors.textSecondary}
           placeholder="0.00" 
           keyboardType="numeric"
           value={price} 
           onChangeText={setPrice} 
         />
 
-        <Text style={styles.label}>Description (Optional)</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Description (Optional)</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]} 
+          placeholderTextColor={colors.textSecondary}
           placeholder="Size, color, or specific details"
           value={description}
           onChangeText={setDescription}
@@ -211,17 +217,17 @@ export const AddItemScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 5, color: '#333', marginTop: 10 },
+  container: { flex: 1, padding: 20 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 5, marginTop: 10 },
   
   inputContainer: { position: 'relative', marginBottom: 5 },
   input: { 
-    borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, 
-    fontSize: 16, backgroundColor: '#f9f9f9', marginBottom: 20
+    borderWidth: 1, borderRadius: 8, padding: 12, 
+    fontSize: 16, marginBottom: 20
   },
   loadingIcon: { position: 'absolute', right: 12, top: 12 },
   
-  helperText: { fontSize: 12, color: '#888', marginBottom: 20, marginTop: 0 },
+  helperText: { fontSize: 12, marginBottom: 20, marginTop: 0 },
   
   btn: { 
     backgroundColor: '#007AFF', padding: 16, borderRadius: 8, 
@@ -230,10 +236,8 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   imageBtn: {
     height: 150,
-    backgroundColor: '#f0f0f0',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',

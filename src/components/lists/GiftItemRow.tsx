@@ -8,7 +8,7 @@ import {
   Alert 
 } from 'react-native';
 import { GiftItemUI } from '../../types/models'; // Adjust path if necessary
-import { PricingCard, lightColors } from '@rneui/base';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 interface GiftItemRowProps {
   item: GiftItemUI;
@@ -23,6 +23,8 @@ export const GiftItemRow = ({
   currentUserId, 
   onToggleClaim 
 }: GiftItemRowProps) => {
+
+  const { colors, isDarkMode } = useAppTheme();
 
   // --- DERIVED STATE ---
   const isClaimed = !!item.claimStatus;
@@ -65,22 +67,22 @@ export const GiftItemRow = ({
   };
 
   return (
-    <View style={[styles.container, isTaken && styles.containerDimmed]}>
+    <View style={[styles.container, { backgroundColor: colors.card, shadowColor: colors.text }, isTaken && { opacity: 0.6 }]}>
       {/* 1. Item Info Section */}
       <View style={styles.infoContainer}>
-        <Text style={styles.name}>{item.name}</Text>
+        <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
         
         {/* Price & Link Row */}
         <View style={styles.metaRow}>
           {item.price ? (
-            <Text style={styles.price}>${item.price.toFixed(2)}</Text>
+            <Text style={[styles.price, { color: colors.textSecondary }]}>${item.price.toFixed(2)}</Text>
           ) : null}
         </View>
           
         {/* Strict boolean casting prevents an empty string "" from being rendered as a text node */}
         {!!item.url && (
           <TouchableOpacity onPress={handleOpenLink}>
-            <Text style={styles.link}>View Online ↗</Text>
+            <Text style={[styles.link, { color: colors.primary }]}>View Online ↗</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -96,20 +98,14 @@ export const GiftItemRow = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: 'white',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
-  },
-  containerDimmed: {
-    opacity: 0.6,
-    backgroundColor: '#F5F5F5',
   },
   infoContainer: {
     flex: 1,
@@ -118,7 +114,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 4,
   },
   metaRow: {
@@ -128,13 +123,11 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: 14,
-    color: '#2E7D32', // Green
     fontWeight: '600',
     marginRight: 12,
   },
   link: {
     fontSize: 14,
-    color: '#007AFF',
     textDecorationLine: 'underline',
   },
   actionContainer: {

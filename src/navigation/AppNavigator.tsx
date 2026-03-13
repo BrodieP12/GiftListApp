@@ -1,7 +1,8 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { useAppTheme } from '../theme/ThemeContext';
 
 import { useAuth } from '../hooks/useAuth';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -53,17 +54,34 @@ const AppNavigator = () => (
 
 export const RootNavigator = () => {
   const { user, loading } = useAuth();
+  const { isDarkMode, colors } = useAppTheme();
+
+  // Pick the base navigation theme based on dark mode
+  const navTheme = isDarkMode ? DarkTheme : DefaultTheme;
+  
+  // Create an extended theme to map custom colors into React Navigation if needed
+  const navigationTheme = {
+    ...navTheme,
+    colors: {
+      ...navTheme.colors,
+      background: colors.background,
+      card: colors.card,
+      text: colors.text,
+      border: colors.border,
+      primary: colors.primary,
+    },
+  };
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
       {user ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
@@ -74,6 +92,5 @@ const styles = StyleSheet.create({
     flex: 1, 
     justifyContent: 'center', 
     alignItems: 'center',
-    backgroundColor: '#fff' 
   },
 });
