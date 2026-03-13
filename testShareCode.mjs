@@ -48,9 +48,15 @@ async function testShareCodeQuery() {
   // Test against the newly generated code
   const isUniqueGlobally = !allExistingCodes.includes(newCode);
   if (isUniqueGlobally) {
+<<<<<<< HEAD
     console.log(`SUCCESS: The new code '${newCode}' is unique among all existing codes!`);
   } else {
     console.log(`COLLISION: The new code '${newCode}' matches an existing code!`);
+=======
+    console.log(`✅ SUCCESS: The new code '${newCode}' is unique among all existing codes!`);
+  } else {
+    console.log(`❌ COLLISION: The new code '${newCode}' matches an existing code!`);
+>>>>>>> 29f894d3b199566e035a47023f4e8d7539dfe792
   }
 
 
@@ -62,9 +68,15 @@ async function testShareCodeQuery() {
   const specificSnapshot = await getDocs(q);
 
   if (specificSnapshot.empty) {
+<<<<<<< HEAD
     console.log(`SUCCESS: Direct query confirmed no list exists with code '${newCode}'.`);
   } else {
     console.log(`COLLISION: Direct query found a list with code '${newCode}'.`);
+=======
+    console.log(`✅ SUCCESS: Direct query confirmed no list exists with code '${newCode}'.`);
+  } else {
+    console.log(`❌ COLLISION: Direct query found a list with code '${newCode}'.`);
+>>>>>>> 29f894d3b199566e035a47023f4e8d7539dfe792
   }
 
   process.exit(0);
