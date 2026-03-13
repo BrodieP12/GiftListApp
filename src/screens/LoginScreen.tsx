@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import { AuthService } from '../services/AuthService';
 import { Button } from '../components/common/Button';
+import { useAppTheme } from '../theme/ThemeContext';
 
 export const LoginScreen = () => {
+  const { colors } = useAppTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -46,20 +48,20 @@ export const LoginScreen = () => {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>
+        <Text style={[styles.title, { color: colors.text }]}>
           {isRegistering ? 'Create Account' : 'Welcome Back'}
         </Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           {isRegistering ? 'Sign up to start your gift list.' : 'Sign in to view your lists.'}
         </Text>
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
           placeholder="Email Address"
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.textSecondary}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -67,15 +69,15 @@ export const LoginScreen = () => {
         />
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
           placeholder="Password"
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.textSecondary}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
         />
         <TouchableOpacity 
-          style={styles.button} 
+          style={[styles.button, { backgroundColor: colors.primary }]} 
           onPress={handleSubmit} 
           disabled={loading}
         >
@@ -92,7 +94,7 @@ export const LoginScreen = () => {
           onPress={() => setIsRegistering(!isRegistering)} 
           style={styles.switchContainer}
         >
-          <Text style={styles.switchText}>
+          <Text style={[styles.switchText, { color: colors.primary }]}>
             {isRegistering 
               ? 'Already have an account? Login' 
               : "Don't have an account? Sign Up"}
@@ -106,7 +108,6 @@ export const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
@@ -117,24 +118,19 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#333',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     marginBottom: 32,
   },
   input: {
-    backgroundColor: '#f5f5f5',
     padding: 16,
     borderRadius: 8,
     marginBottom: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
   },
   button: {
-    backgroundColor: '#007AFF',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -150,7 +146,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   switchText: {
-    color: '#007AFF',
     fontSize: 14,
   },
 });

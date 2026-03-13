@@ -8,6 +8,7 @@ import {
   TextStyle,
   StyleProp // Added to support array styles
 } from 'react-native';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 interface ButtonProps {
   title: string;
@@ -30,19 +31,20 @@ export const Button = ({
   style,
   textStyle,
 }: ButtonProps) => {
+  const { colors, isDarkMode } = useAppTheme();
   
   const getBackgroundColor = () => {
-    if (disabled) return '#A0A0A0'; 
+    if (disabled) return isDarkMode ? '#333' : '#A0A0A0'; 
     switch (variant) {
-      case 'secondary': return '#E0E0E0';
-      case 'danger': return '#FF3B30';
+      case 'secondary': return colors.border;
+      case 'danger': return colors.danger;
       case 'primary': 
-      default: return '#007AFF';
+      default: return colors.primary;
     }
   };
 
   const getTextColor = () => {
-    if (variant === 'secondary') return '#333';
+    if (variant === 'secondary') return colors.text;
     return '#FFF';
   };
 

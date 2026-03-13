@@ -16,12 +16,14 @@ import { useAuth } from '../hooks/useAuth';
 import { useGiftList } from '../hooks/useGiftList';
 import { SafeAreaView } from 'react-native-safe-area-context'; 
 import { GiftItemRow } from '../components/lists/GiftItemRow';
+import { useAppTheme } from '../theme/ThemeContext';
 
 type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
 
 export const ListDetailScreen = ({ route, navigation }: Props) => {
   const { listId, ownerId } = route.params;
   const { user } = useAuth();
+  const { colors } = useAppTheme();
   
   // 1. Destructure `refresh` (matches your hook's exported property)
   const { items, loading, isOwner, toggleClaim, refresh } = useGiftList(listId, ownerId);
@@ -63,14 +65,14 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No items in this list yet.</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No items in this list yet.</Text>
           </View>
         }
       />
 
       {isOwner && (
         <TouchableOpacity
-          style={styles.fab}
+          style={[styles.fab, { backgroundColor: colors.primary }]}
           onPress={() => navigation.navigate('AddItem', { listId: listId })}
         >
           <Text style={styles.fabText}>+ Add Item</Text>
@@ -83,7 +85,6 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
   },
   center: {
     flex: 1,
@@ -98,14 +99,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#8e8e93',
     fontSize: 16,
   },
   fab: {
     position: 'absolute',
     bottom: 30,
     right: 30,
-    backgroundColor: '#007AFF',
     width: 120,
     height: 50,
     borderRadius: 25,

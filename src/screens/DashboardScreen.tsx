@@ -10,11 +10,13 @@ import { GiftList } from '../types/models';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AppStackParamList } from '../navigation/AppNavigator';
 import { Button } from '../components/common/Button';
+import { useAppTheme } from '../theme/ThemeContext';
 
 type DashboardNavProp = StackNavigationProp<AppStackParamList, 'Dashboard'>;
 
 export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }) => {
     const { user, logout } = useAuth();
+    const { isDarkMode, colors, toggleTheme } = useAppTheme();
     const [lists, setLists] = useState<GiftList[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -52,10 +54,10 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     };
 
     const renderItem = ({ item }: { item: GiftList }) => (
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, shadowColor: colors.text }]}>
             <View>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardSub}>Owner: Me</Text>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>{item.title}</Text>
+                <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Owner: Me</Text>
             </View>
             <Button
                 title="View →"
@@ -71,19 +73,24 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     const renderListHeader = () => (
         <View style={styles.headerContainer}>
             <View style={styles.headerRow}>
-                <Text style={styles.welcome}>Hello, {user?.email}</Text>
-                <Button title="Logout" variant="danger" onPress={logout} />
+                <Text style={[styles.welcome, { color: colors.text }]}>Hello, {user?.email}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
+                        <Text style={styles.themeToggleText}>{isDarkMode ? '🌞' : '🌙'}</Text>
+                    </TouchableOpacity>
+                    <Button title="Logout" variant="danger" onPress={logout} />
+                </View>
             </View>
-            <Text style={styles.sectionTitle}>My Lists</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>My Lists</Text>
         </View>
     );
 
     return (
         // ✅ This outer View is the full screen, and uses flex: 1
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             {loading ? (
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#007AFF" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : (
                 <>
@@ -98,12 +105,12 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
                         contentContainerStyle={styles.listContent}
                         alwaysBounceVertical={true}
                         ListEmptyComponent={
-                            <Text style={styles.empty}>No lists yet. Tap + to create one!</Text>
+                            <Text style={[styles.empty, { color: colors.textSecondary }]}>No lists yet. Tap + to create one!</Text>
                         }
                     />
 
                     {/* ✅ FAB is a sibling to FlatList, not inside it — position: 'absolute' pins it to the corner */}
-                    <TouchableOpacity style={styles.fab} onPress={handleCreateList}>
+                    <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]} onPress={handleCreateList}>
                         <Text style={styles.fabText}>+</Text>
                     </TouchableOpacity>
                 </>
@@ -113,7 +120,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8f9fa' },
+    container: { flex: 1 },
 
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
@@ -125,16 +132,22 @@ const styles = StyleSheet.create({
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
 
     welcome: { fontSize: 16, fontWeight: 'bold' },
-    sectionTitle: { fontSize: 22, fontWeight: '800', color: '#333' },
+    sectionTitle: { fontSize: 22, fontWeight: '800' },
+    
+    themeToggle: {
+        width: 40, height: 40, justifyContent: 'center', alignItems: 'center',
+        backgroundColor: 'rgba(128,128,128,0.1)', borderRadius: 20,
+    },
+    themeToggleText: { fontSize: 20 },
 
     card: {
-        backgroundColor: 'white', padding: 20, borderRadius: 12, marginBottom: 12,
+        padding: 20, borderRadius: 12, marginBottom: 12,
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }
+        elevation: 2, shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }
     },
     cardTitle: { fontSize: 18, fontWeight: '600' },
-    cardSub: { color: 'gray', marginTop: 4 },
-    empty: { textAlign: 'center', marginTop: 40, color: '#888' },
+    cardSub: { marginTop: 4 },
+    empty: { textAlign: 'center', marginTop: 40 },
 
     // ✅ FAB styles — position absolute takes it out of flow and pins to corner
     fab: {
@@ -144,7 +157,6 @@ const styles = StyleSheet.create({
         width: 58,
         height: 58,
         borderRadius: 29,
-        backgroundColor: '#007AFF',
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 6,
