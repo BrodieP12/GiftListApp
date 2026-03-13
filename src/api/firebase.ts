@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -35,10 +36,14 @@ if (!getApps().length) {
   // ROBUST AUTH INITIALIZATION
   // We use a try-catch pattern to handle different Firebase versions gracefully
   try {
-    // Try explicit React Native persistence (Standard for Firebase v10+)
-    auth = initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage)
-    });
+    if (Platform.OS === 'web') {
+      auth = getAuth(app);
+    } else {
+      // Try explicit React Native persistence (Standard for Firebase v10+)
+      auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage)
+      });
+    }
   } catch (e) {
     console.warn("Explicit persistence failed, falling back to default getAuth.");
     // Fallback: This auto-detects the environment

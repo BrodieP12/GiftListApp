@@ -14,9 +14,10 @@ import { AppStackParamList } from '../navigation/AppNavigator';
 import { GiftItemUI } from "../types/models";
 import { useAuth } from '../hooks/useAuth';
 import { useGiftList } from '../hooks/useGiftList';
-import { SafeAreaView } from 'react-native-safe-area-context'; 
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GiftItemRow } from '../components/lists/GiftItemRow';
 import { useAppTheme } from '../theme/ThemeContext';
+import { AccessDeniedModal } from '../components/modals/AccessDeniedModal';
 
 type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
 
@@ -24,15 +25,15 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
   const { listId, ownerId } = route.params;
   const { user } = useAuth();
   const { colors } = useAppTheme();
-  
+
   // 1. Destructure `refresh` (matches your hook's exported property)
-  const { items, loading, isOwner, toggleClaim, refresh } = useGiftList(listId, ownerId);
+  const { items, loading, isOwner, isAllowed, toggleClaim, refresh } = useGiftList(listId, ownerId);
 
   // 2. Trigger the refresh function whenever the screen regains focus
   useFocusEffect(
     useCallback(() => {
       refresh();
-    }, [refresh]) 
+    }, [refresh])
   );
 
   const handleToggleClaim = (item: GiftItemUI) => {
@@ -51,32 +52,47 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList
-        data={items}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
-        renderItem={({ item }) => (
-          <GiftItemRow
-            item={item}
-            currentUserId={user?.uid ?? ''}
-            isOwner={isOwner}
-            onToggleClaim={handleToggleClaim}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No items in this list yet.</Text>
-          </View>
-        }
+      <AccessDeniedModal 
+        visible={!loading && isAllowed === false}
+        onGoBack={() => {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.replace('Dashboard');
+          }
+        }}
       />
 
-      {isOwner && (
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate('AddItem', { listId: listId })}
-        >
-          <Text style={styles.fabText}>+ Add Item</Text>
-        </TouchableOpacity>
+      {isAllowed !== false && (
+        <>
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
+            renderItem={({ item }) => (
+              <GiftItemRow
+                item={item}
+                currentUserId={user?.uid ?? ''}
+                isOwner={isOwner}
+                onToggleClaim={handleToggleClaim}
+              />
+            )}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No items in this list yet.</Text>
+              </View>
+            }
+          />
+
+          {isOwner && (
+            <TouchableOpacity
+              style={[styles.fab, { backgroundColor: colors.primary }]}
+              onPress={() => navigation.navigate('AddItem', { listId: listId })}
+            >
+              <Text style={styles.fabText}>+ Add Item</Text>
+            </TouchableOpacity>
+          )}
+        </>
       )}
     </SafeAreaView>
   );
@@ -93,6 +109,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    maxWidth: 800,
+    width: '100%',
+    alignSelf: 'center'
   },
   emptyState: {
     marginTop: 50,

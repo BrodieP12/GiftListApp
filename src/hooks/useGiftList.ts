@@ -10,6 +10,7 @@ export const useGiftList = (listId: string, ownerId: string) => {
   const [items, setItems] = useState<GiftItemUI[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
 
   const isOwner = user?.uid === ownerId;
 
@@ -23,6 +24,23 @@ export const useGiftList = (listId: string, ownerId: string) => {
     setError(null);
 
     try {
+      // Permission check
+      const listData = await ListService.getListById(listId);
+      if (!listData) {
+        setIsAllowed(false);
+        setLoading(false);
+        return;
+      }
+      
+      const userHasAccess = (user.uid === listData.ownerId) || listData.allowedUsers.includes(user.uid);
+      if (!userHasAccess) {
+        setIsAllowed(false);
+        setLoading(false);
+        return;
+      }
+      
+      setIsAllowed(true);
+
       // 1. Always fetch the raw items first
       const rawItems = await ListService.getItems(listId);
 
@@ -94,6 +112,7 @@ export const useGiftList = (listId: string, ownerId: string) => {
     loading,
     error,
     isOwner,
+    isAllowed,
     refresh: fetchItems,
     toggleClaim
   };

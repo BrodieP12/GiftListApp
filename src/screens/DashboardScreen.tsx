@@ -126,7 +126,13 @@ const styles = StyleSheet.create({
 
     list: { flex: 1 },
     // ✅ paddingBottom: 100 gives clearance so the last card isn't under the FAB
-    listContent: { padding: 20, paddingBottom: 100 },
+    listContent: { 
+        padding: 20, 
+        paddingBottom: 100,
+        maxWidth: 800,
+        width: '100%',
+        alignSelf: 'center'
+    },
 
     headerContainer: { marginBottom: 15 },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
