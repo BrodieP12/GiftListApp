@@ -80,8 +80,20 @@ export const RootNavigator = () => {
     );
   }
 
+  const linking = {
+    prefixes: ['giftlistapp://'],
+    config: {
+      screens: {
+        Login: 'login',
+        Dashboard: '',
+        ListDetail: 'list/:ownerId/:listId',
+        AddItem: 'add-item/:listId',
+      },
+    },
+  };
+
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer linking={linking} theme={navigationTheme}>
       {user ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

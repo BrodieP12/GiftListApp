@@ -54,7 +54,7 @@ describe('ListService.createList', () => {
 
     // We expect the result to be a 7 character string
     expect(typeof result).toBe('string');
-    expect(result.length).toBe(7);
+    expect(result!.length).toBe(7);
 
     // Verify transaction.get was called to check uniqueness inside runTransaction
     expect(mockTransactionGet).toHaveBeenCalled();

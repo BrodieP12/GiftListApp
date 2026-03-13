@@ -7,7 +7,8 @@ import {
   serverTimestamp,
   doc,
   deleteDoc,
-  runTransaction
+  runTransaction,
+  getDoc
 } from 'firebase/firestore';
 import { db } from '../api/firebase';
 import { GiftList, GiftItem } from '../types/models';
@@ -155,6 +156,23 @@ export const ListService = {
 
   async deleteList(listId: string) {
     await deleteDoc(doc(db, 'lists', listId));
+  },
+
+  async getListById(listId: string): Promise<GiftList | null> {
+    const docRef = doc(db, 'lists', listId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        ownerId: data.ownerId,
+        title: data.title,
+        isPrivate: data.isPrivate,
+        allowedUsers: data.allowedUsers || [],
+        createdAt: data.createdAt
+      } as GiftList;
+    }
+    return null;
   },
 
   async addItem(listId: string, item: Partial<GiftItem>) {
