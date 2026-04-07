@@ -18,7 +18,6 @@ export const RetailerService = {
   async fetchItemMetadata(url: string): Promise<ScrapedData> {
     // 1. input Validation
     if (!url || !isValidUrl(url)) {
-      console.warn('Invalid URL format');
       return {};
     }
 
@@ -43,8 +42,6 @@ export const RetailerService = {
       };
 
     } catch (error) {
-      console.error('Retailer Service Error:', error);
-      // Fail gracefully: Return empty data so the user can still fill the form manually.
       return {}; 
     }
   },

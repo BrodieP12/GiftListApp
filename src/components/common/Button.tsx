@@ -6,8 +6,10 @@ import {
   StyleSheet, 
   ViewStyle, 
   TextStyle,
-  StyleProp // Added to support array styles
+  StyleProp 
 } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 interface ButtonProps {
   title: string;
@@ -15,8 +17,9 @@ interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'danger';
   loading?: boolean;
   disabled?: boolean;
-  // USE StyleProp: This tells TypeScript that users can pass an array of styles 
-  // (e.g., style={[styles.base, styles.active]}) instead of just a single object.
+  // Added to support icons
+  icon?: string;
+  iconPosition?: 'left' | 'right';
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
 }
@@ -27,22 +30,25 @@ export const Button = ({
   variant = 'primary',
   loading = false,
   disabled = false,
+  icon,
+  iconPosition = 'left',
   style,
   textStyle,
 }: ButtonProps) => {
+  const { colors } = useAppTheme();
   
   const getBackgroundColor = () => {
-    if (disabled) return '#A0A0A0'; 
+    if (disabled) return colors.border; 
     switch (variant) {
-      case 'secondary': return '#E0E0E0';
-      case 'danger': return '#FF3B30';
+      case 'secondary': return colors.border; // Soft fallback
+      case 'danger': return colors.danger;
       case 'primary': 
-      default: return '#007AFF';
+      default: return colors.primary;
     }
   };
 
   const getTextColor = () => {
-    if (variant === 'secondary') return '#333';
+    if (variant === 'secondary') return colors.text;
     return '#FFF';
   };
 
@@ -60,13 +66,33 @@ export const Button = ({
       {loading ? (
         <ActivityIndicator color={getTextColor()} />
       ) : (
-        <Text style={[
-          styles.text, 
-          { color: getTextColor() },
-          textStyle
-        ]}>
-          {title}
-        </Text>
+        <>
+          {icon && iconPosition === 'left' && (
+            <FontAwesome5 
+              name={icon} 
+              size={18} 
+              color={getTextColor()} 
+              style={[styles.icon, { marginRight: title ? 8 : 0 }]} 
+            />
+          )}
+          {title ? (
+            <Text style={[
+              styles.text, 
+              { color: getTextColor() },
+              textStyle
+            ]}>
+              {title}
+            </Text>
+          ) : null}
+          {icon && iconPosition === 'right' && (
+            <FontAwesome5 
+              name={icon} 
+              size={18} 
+              color={getTextColor()} 
+              style={[styles.icon, { marginLeft: title ? 8 : 0 }]} 
+            />
+          )}
+        </>
       )}
     </TouchableOpacity>
   );
@@ -85,5 +111,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  icon: {
+    // Optional: add any base icon styles here
   },
 });

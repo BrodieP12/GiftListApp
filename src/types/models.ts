@@ -1,8 +1,33 @@
+import { Timestamp } from "firebase/firestore";
+
+/**
+ * COMPREHENSIVE USER PROFILE
+ * This is the full profile shape created during registration.
+ */
 export interface User {
   uid: string;
   email: string;
-  displayName?: string;
-  isPremium?: boolean;
+  displayName: string;
+  givenName: string;
+  familyName: string;
+  photoURL: string | null;
+  birthday: Date | null | Timestamp; // Firestore returns Timestamp, code often sets Date
+  isPremium: boolean;
+  createdAt: Date | null | Timestamp;
+
+  minorProtection: {
+    isMinor: boolean;
+    parentEmail: string;
+  };
+
+  legalAcceptance: {
+    termsAccepted: boolean;
+    privacyAccepted: boolean;
+    acceptanceDate: Date | null | Timestamp;
+    isEUUser: boolean;
+    gdprApplies: boolean;
+    acceptedDataProcessing: boolean;
+  };
 }
 
 export interface GiftList {
@@ -10,8 +35,10 @@ export interface GiftList {
   ownerId: string;
   title: string;
   isPrivate: boolean;
+  shareCode?: string;
   allowedUsers: string[]; // Array of User UIDs
-  createdAt: any;         // Firestore Timestamp
+  createdAt: Timestamp;
+  updatedAt?: Timestamp | null;
 }
 
 export interface GiftItem {
@@ -22,7 +49,8 @@ export interface GiftItem {
   price?: number;
   imageUri?: string;
   url?: string;           // External retailer URL
-  createdAt?: any;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp | null;
   substitutions: boolean;
 }
 
@@ -36,7 +64,7 @@ export interface ItemClaim {
   item: GiftItem;
   claimedBy: string;      // User UID of the guest who bought it
   listOwnerId: string;    // Needed for Security Rules to block the owner
-  claimedAt: any;
+  claimedAt: Timestamp;
   onToggleClaim: (itemId: string, claimedBy: string | null) => void;
 }
 
@@ -57,7 +85,7 @@ export interface Feedback {
   userEmail: string;
   text: string;
   type: 'bug' | 'feature' | 'general';
-  createdAt: any;
+  createdAt: Timestamp;
 }
 
 export interface Friend {

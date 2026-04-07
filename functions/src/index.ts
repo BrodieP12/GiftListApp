@@ -9,3 +9,5 @@ export { compareProducts } from "./productComparison";
 export { analyzePrice, analyzePriceNoHistory } from "./priceAnalyzer";
 export { manageWishlist } from "./wishlistManager";
 export { extractProductFromVideo } from "./videoExtractor";
+export { onListCreated } from "./onListCreated";
+export { syncFeedbackToSheets } from "./syncFeedbackToSheets";

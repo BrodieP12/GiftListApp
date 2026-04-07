@@ -6,7 +6,8 @@ import {
   setDoc, 
   doc, 
   deleteDoc,
-  serverTimestamp 
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../api/firebase';
 import { ItemClaim } from '../types/models';
@@ -37,6 +38,26 @@ export const ClaimService = {
       claims[doc.id] = data; // doc.id is the itemId
     });
     return claims;
+  },
+
+  listenToClaimsForList(
+    ownerId: string, 
+    listId: string, 
+    onUpdate: (claims: Record<string, ItemClaim>) => void, 
+    onError: (err: Error) => void
+  ) {
+    const q = query(
+      collection(db, 'claims'), 
+      where('listOwnerId', '==', ownerId),
+      where('listId', '==', listId));
+
+    return onSnapshot(q, (snapshot) => {
+      const claims: Record<string, ItemClaim> = {};
+      snapshot.forEach(doc => {
+        claims[doc.id] = doc.data() as ItemClaim;
+      });
+      onUpdate(claims);
+    }, onError);
   },
 
   async claimItem(itemId: string, userId: string, listOwnerId: string, listId: string) {

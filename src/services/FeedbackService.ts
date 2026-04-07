@@ -1,4 +1,5 @@
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { Platform } from 'react-native';
 import { db } from '../api/firebase';
 import { Feedback } from '../types/models';
 
@@ -6,17 +7,17 @@ export const FeedbackService = {
   /**
    * Submits user feedback to Firestore
    */
-  async submitFeedback(userId: string, userEmail: string, text: string) {
+  async submitFeedback(userId: string, userEmail: string, text: string, type: string = 'general', isAnonymous: boolean = false) {
     if (!text.trim()) throw new Error("Feedback cannot be empty");
 
     await addDoc(collection(db, 'feedback'), {
-      userId,
-      userEmail,
+      userId: isAnonymous ? 'anonymous' : userId,
+      userEmail: isAnonymous ? 'anonymous@example.com' : userEmail,
       text,
-      type: 'general', // You could expand this with a dropdown later
+      type,
+      isAnonymous,
       createdAt: serverTimestamp(),
-      // Optional: Add app version or platform info here
-      platform: 'mobile' 
+      platform: Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'android' ? 'Android' : 'Web' 
     });
   }
 };

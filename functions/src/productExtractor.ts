@@ -1,6 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { GoogleGenAI } from "@google/genai";
-import axios from "axios";
 import * as cheerio from "cheerio";
 
 export const extractProduct = onRequest(
@@ -14,7 +13,8 @@ export const extractProduct = onRequest(
 
         try {
             // 1. Scrape Page with Enhanced Stealth Headers
-            const response = await axios.get(url, {
+            const response = await fetch(url, {
+                method: 'GET',
                 headers: { 
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -23,10 +23,20 @@ export const extractProduct = onRequest(
                     'Sec-Ch-Ua-Mobile': '?0',
                     'Sec-Ch-Ua-Platform': '"Windows"'
                 },
-                timeout: 15000
+                signal: AbortSignal.timeout(15000)
             });
             
-            const $ = cheerio.load(response.data);
+            if (response.status === 503 || response.status === 403) {
+                 res.status(response.status).json({ success: false, error: "Website blocked the connection (Bot Protection).", source: url });
+                 return;
+            }
+
+            if (!response.ok) {
+                 throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const responseText = await response.text();
+            const $ = cheerio.load(responseText);
             const pageTitle = $('title').text().toLowerCase();
             
             // Check for common Bot Detection pages
@@ -97,9 +107,8 @@ export const extractProduct = onRequest(
 
             res.json({ success: true, product: JSON.parse(aiResponse.text || "{}"), source: url });
         } catch (error: any) {
-            // Handle Axios 503 errors (which Amazon often throws at bots)
-            if (error.response && (error.response.status === 503 || error.response.status === 403)) {
-                 res.status(error.response.status).json({ success: false, error: "Website blocked the connection (Bot Protection).", source: url });
+            if (error.name === 'TimeoutError') {
+                 res.status(504).json({ success: false, error: "Website parsing timed out.", source: url });
                  return;
             }
             res.status(500).json({ success: false, error: error.message });

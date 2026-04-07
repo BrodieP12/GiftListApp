@@ -6,7 +6,7 @@ import {
   // @ts-ignore
   getReactNativePersistence 
 } from 'firebase/auth'; 
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore, initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 import { getFunctions, Functions } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // 1. Your Web App Configuration
@@ -40,18 +40,26 @@ if (!getApps().length) {
       persistence: getReactNativePersistence(AsyncStorage)
     });
   } catch (e) {
-    console.warn("Explicit persistence failed, falling back to default getAuth.");
     // Fallback: This auto-detects the environment
     auth = getAuth(app);
+  }
+
+  // ROBUST FIRESTORE INITIALIZATION (Offline Support)
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache()
+    });
+  } catch (e) {
+    db = getFirestore(app);
   }
 
 } else {
   app = getApp();
   auth = getAuth(app);
+  db = getFirestore(app);
 }
 
 // 3. Initialize Services
-db = getFirestore(app);
 functions = getFunctions(app);
 
 export { app, auth, db, functions };

@@ -8,19 +8,30 @@ import {
   StyleSheet, 
   ActivityIndicator, 
   Alert,
-  KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { AuthService } from '../services/AuthService';
-import { Button } from '../components/common/Button';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { AuthStackParamList } from '../navigation/AppNavigator';
+import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 
-export const LoginScreen = () => {
+type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
+
+interface LoginScreenProps {
+  navigation: LoginScreenNavigationProp;
+}
+
+export const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
+
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields.');
       return;
@@ -28,14 +39,7 @@ export const LoginScreen = () => {
 
     setLoading(true);
     try {
-      if (isRegistering) {
-        await AuthService.register(email, password);
-      } else {
-        await AuthService.login(email, password);
-      }
-      // Note: No navigation needed here! 
-      // The useAuth hook in AppNavigator will detect the user change 
-      // and automatically switch to the Dashboard.
+      await AuthService.login(email, password);
     } catch (error: any) {
       Alert.alert('Authentication Failed', error.message);
     } finally {
@@ -44,69 +48,70 @@ export const LoginScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <KeyboardAwareScrollView 
       style={styles.container}
+      contentContainerStyle={{ flexGrow: 1 }}
+      enableOnAndroid={true}
+      extraScrollHeight={20}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>
-          {isRegistering ? 'Create Account' : 'Welcome Back'}
-        </Text>
-        <Text style={styles.subtitle}>
-          {isRegistering ? 'Sign up to start your gift list.' : 'Sign in to view your lists.'}
-        </Text>
+        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.subtitle}>Sign in to view your lists.</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email Address"
-          placeholderTextColor="#999"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#999"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.inputWrapper}>
+          <FontAwesome5 name="envelope" size={18} color={colors.textDim} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Email Address"
+            placeholderTextColor={colors.textDim}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+        </View>
+ 
+        <View style={styles.inputWrapper}>
+          <FontAwesome5 name="lock" size={18} color={colors.textDim} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor={colors.textDim}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+        
         <TouchableOpacity 
           style={styles.button} 
-          onPress={handleSubmit} 
+          onPress={handleLogin} 
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>
-              {isRegistering ? 'Sign Up' : 'Login'}
-            </Text>
+            <Text style={styles.buttonText}>Login</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity 
-          onPress={() => setIsRegistering(!isRegistering)} 
+          onPress={() => navigation.navigate('CreateProfile')} 
           style={styles.switchContainer}
         >
           <Text style={styles.switchText}>
-            {isRegistering 
-              ? 'Already have an account? Login' 
-              : "Don't have an account? Sign Up"}
+            Don't have an account? Sign Up
           </Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -117,40 +122,53 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#333',
+    color: colors.text,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     marginBottom: 32,
+    color: colors.textDim,
   },
-  input: {
-    backgroundColor: '#f5f5f5',
-    padding: 16,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 8,
     marginBottom: 16,
-    fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    position: 'relative',
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 1,
+  },
+  input: {
+    flex: 1,
+    padding: 16,
+    paddingLeft: 48,
+    fontSize: 16,
+    color: colors.text,
   },
   button: {
-    backgroundColor: '#007AFF',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 8,
+    backgroundColor: colors.primary,
   },
   buttonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+    color: '#fff',
   },
   switchContainer: {
     marginTop: 24,
     alignItems: 'center',
   },
   switchText: {
-    color: '#007AFF',
     fontSize: 14,
+    color: colors.textDim,
   },
 });
