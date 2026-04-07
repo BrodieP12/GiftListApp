@@ -29,6 +29,11 @@ export const extractProductFromVideo = onRequest(
             const info = await youtubedl(video_url, {
                 dumpJson: true,
                 noWarnings: true,
+                // These arguments help mimic a browser more effectively
+                args: [
+                    '--extractor-args', 'youtube:player_client=android,web',
+                    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                ]
             });
             
             await youtubedl(video_url, {

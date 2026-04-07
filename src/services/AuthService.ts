@@ -1,13 +1,39 @@
-// src/services/AuthService.ts
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut,
+  fetchSignInMethodsForEmail,
   AuthError
 } from 'firebase/auth';
 import { auth } from '../api/firebase';
 
 export const AuthService = {
+  /**
+   * Checks if an email is already in use using both Firebase Auth and Firestore.
+   * This ensures we catch legacy users (Auth only) and new users (Firestore profiles).
+   */
+  async isEmailInUse(email: string): Promise<boolean> {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    try {
+      // 1. Check Firebase Auth (Works for legacy users if enumeration protection is off)
+      const methods = await fetchSignInMethodsForEmail(auth, cleanEmail);
+      if (methods.length > 0) return true;
+
+      // 2. Fallback: Check Firestore (Works for new users with profiles)
+      // Note: Requires 'allow list: if request.query.limit <= 1' in firestore.rules
+      const { collection, query, where, getDocs, limit, getFirestore } = await import('firebase/firestore');
+      const db = getFirestore();
+      const userRef = collection(db, 'users');
+      const q = query(userRef, where('email', '==', cleanEmail), limit(1));
+      const snapshot = await getDocs(q);
+      
+      return !snapshot.empty;
+    } catch (error) {
+      // Fallback: assume not in use and let the actual registration throw if needed
+      return false;
+    }
+  },
   /**
    * Logs in an existing user.
    */
@@ -37,7 +63,7 @@ export const AuthService = {
     try {
       await signOut(auth);
     } catch (error) {
-      console.error(error);
+      // Logout failed
     }
   },
 

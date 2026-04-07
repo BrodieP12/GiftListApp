@@ -5,12 +5,14 @@ import React, {
   useState, 
   ReactNode 
 } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '../api/firebase';
+import { User as AppUser } from '../types/models';
+import { UserService, createDefaultUser } from '../services/UserService';
 
 // 1. Define the Shape of the Context
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   loading: boolean;
   logout: () => Promise<void>;
 }
@@ -29,14 +31,33 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Subscribe to auth state changes from Firebase
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false); 
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setLoading(true); // Maintain loading while fetching firestore doc
+        try {
+          const firestoreUser = await UserService.getUserDocument(firebaseUser.uid);
+          
+          if (firestoreUser) {
+            setUser(firestoreUser);
+          } else {
+            const newUser = createDefaultUser(firebaseUser.uid, firebaseUser.email || '');
+            await UserService.createUserDocument(newUser);
+            setUser(newUser);
+          }
+        } catch (error) {
+          setUser(null);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
     });
 
     // Cleanup subscription on unmount
@@ -47,7 +68,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       await firebaseSignOut(auth);
     } catch (error) {
-      console.error("Logout failed", error);
+      // Logout failed
     }
   };
 

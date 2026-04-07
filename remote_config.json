@@ -1,0 +1,25 @@
+{
+  "parameters": {
+    "current_app_version": {
+      "defaultValue": {
+        "value": "1.0.5.4"
+      },
+      "valueType": "STRING"
+    },
+    "required_native_version": {
+      "defaultValue": {
+        "value": "1.0.6"
+      }
+    },
+    "apk_download_url": {
+      "defaultValue": {
+        "value": "https://giftlistapp-557ce.web.app/latest.apk"
+      }
+    },
+    "latest_update_message": {
+      "defaultValue": {
+        "value": "Fixed OTA Message"
+      }
+    }
+  }
+}

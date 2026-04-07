@@ -62,7 +62,6 @@ export const useGiftList = (listId: string, ownerId: string) => {
       }
 
     } catch (err) {
-      console.error(err);
       setError('Failed to load list items.');
     } finally {
       setLoading(false);

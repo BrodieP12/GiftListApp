@@ -1,23 +1,15 @@
-// screens/ListDetailScreen.tsx
-import React, { useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator
+import React, { useEffect } from 'react';
+import { 
+  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator 
 } from 'react-native';
+import { FlatList } from 'react-native-gesture-handler';
 import { StackScreenProps } from '@react-navigation/stack';
-import { useFocusEffect } from '@react-navigation/native';
 import { AppStackParamList } from '../navigation/AppNavigator';
-import { GiftItemUI } from "../types/models";
 import { useAuth } from '../hooks/useAuth';
-import { useGiftList } from '../hooks/useGiftList';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { GiftItemRow } from '../components/lists/GiftItemRow';
+import { useListDetail } from '../hooks/useListDetail';
 import { useAppTheme } from '../theme/ThemeContext';
-import { AccessDeniedModal } from '../components/modals/AccessDeniedModal';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { GiftItemRow } from '../components/lists/GiftItemRow';
 
 type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
 
@@ -26,118 +18,85 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
   const { user } = useAuth();
   const { colors } = useAppTheme();
 
-  // 1. Destructure `refresh` (matches your hook's exported property)
-  const { items, loading, isOwner, isAllowed, toggleClaim, refresh } = useGiftList(listId, ownerId);
+  const currentUserId = user?.uid ?? ''; 
+  const isOwner = currentUserId === ownerId;
 
-  // 2. Trigger the refresh function whenever the screen regains focus
-  useFocusEffect(
-    useCallback(() => {
-      refresh();
-    }, [refresh])
+  // Extracted logic using our new custom hook!
+  const { items, loading, fetchListData, handleToggleClaim } = useListDetail(
+    ownerId, listId, isOwner, currentUserId
   );
 
-  const handleToggleClaim = (item: GiftItemUI) => {
-    // Directly call the hook's toggleClaim function
-    toggleClaim(item);
-  };
+  useEffect(() => {
+    // Set Header button for Edit if owner
+    if (isOwner) {
+      navigation.setOptions({
+        headerRight: () => (
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ListEdit', { listId })}
+            style={{ marginRight: 15 }}
+          >
+            <FontAwesome5 name="edit" size={18} color={colors.primary} />
+          </TouchableOpacity>
+        )
+      });
+    }
+  }, [listId, ownerId, isOwner, navigation, colors.primary]);
 
-  // 3. Prevent full-screen loading spinner if we already have items during a background refresh
-  if (loading && !items?.length) {
+  if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        // Utilizing dynamic AppTheme Colors
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <AccessDeniedModal 
-        visible={!loading && isAllowed === false}
-        onGoBack={() => {
-          if (navigation.canGoBack()) {
-            navigation.goBack();
-          } else {
-            navigation.replace('Dashboard');
-          }
-        }}
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <FlatList
+        data={items}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
+        renderItem={({ item }) => (
+          <GiftItemRow 
+            {...item} 
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+            onToggleClaim={handleToggleClaim}
+          />
+        )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyText, { color: colors.textDim }]}>No items in this list yet.</Text>
+          </View>
+        }
       />
 
-      {isAllowed !== false && (
-        <>
-          <FlatList
-            data={items}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
-            renderItem={({ item }) => (
-              <GiftItemRow
-                item={item}
-                currentUserId={user?.uid ?? ''}
-                isOwner={isOwner}
-                onToggleClaim={handleToggleClaim}
-              />
-            )}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No items in this list yet.</Text>
-              </View>
-            }
-          />
-
-          {isOwner && (
-            <TouchableOpacity
-              style={[styles.fab, { backgroundColor: colors.primary }]}
-              onPress={() => navigation.navigate('AddItem', { listId: listId })}
-            >
-              <Text style={styles.fabText}>+ Add Item</Text>
-            </TouchableOpacity>
-          )}
-        </>
+      {isOwner && (
+        <TouchableOpacity 
+          style={[styles.fab, { backgroundColor: colors.primary }]}
+          onPress={() => navigation.navigate('AddItem', { listId: listId })}
+        >
+          <FontAwesome5 name="plus" size={20} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.fabText}>Add Item</Text>
+        </TouchableOpacity>
       )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listContent: {
-    padding: 16,
-    maxWidth: 800,
-    width: '100%',
-    alignSelf: 'center'
-  },
-  emptyState: {
-    marginTop: 50,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-  },
+  container: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  listContent: { padding: 16 },
+  emptyState: { marginTop: 50, alignItems: 'center' },
+  emptyText: { fontSize: 16 },
   fab: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    width: 120,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    position: 'absolute', bottom: 30, right: 30, width: 120, height: 50, 
+    borderRadius: 25, justifyContent: 'center', alignItems: 'center', 
+    flexDirection: 'row', elevation: 5, shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84,
   },
-  fabText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16
-  }
+  fabText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });
+

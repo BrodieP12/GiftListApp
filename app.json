@@ -2,39 +2,36 @@
   "expo": {
     "name": "GiftListApp",
     "slug": "giftlistapp",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "assetBundlePatterns": ["**/*"],
-    "ios": {
-      "supportsTablet": true,
-      "buildNumber": 2
-    },
+    "version": "1.0.6",
+    "userInterfaceStyle": "automatic",
     "android": {
-      "versionCode": 2,
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
-    },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "googleServicesFile": "./google-services.json",
+      "package": "com.brodiepasker.giftlistapp",
+      "versionCode": 7
     },
     "plugins": [
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow GiftListApp to access your photos so you can add images to your items.",
-          "cameraPermission": "Allow GiftListApp to take photos of items to add to your lists."
-        }
-      ]
-    ]
+      "@react-native-firebase/app",
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e3e24dce-3514-4b98-afcb-ee7176caf90c"
+      },
+      "updates": {
+        "url": "https://u.expo.dev/019d63c0-baca-716a-ab24-a583866fee7a",
+        "fallbackToCacheTimeout": 0
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
+    },
+    "owner": "bpasker20s-organization",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e3e24dce-3514-4b98-afcb-ee7176caf90c"
+    },
+    "ios": {}
   }
 }

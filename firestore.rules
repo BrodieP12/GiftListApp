@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // NEW: Allow users to securely read and write their own profile document
+    // Also allow limited listing for email uniqueness checks during signup
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      allow list: if request.query.limit <= 1;
+    }
+
+    // FEEDBACK: Allow any authenticated user to send feedback
+    match /feedback/{docId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if false;
+    }
+
+    // LISTS
+    match /lists/{listId} {
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.ownerId;
+      
+      // ALLOW GET (Single Fetch): 
+      allow get: if isAuthenticated(); 
+      
+      // ALLOW LIST (Queries/Feeds):
+      allow list: if isAuthenticated() && (
+        request.auth.uid == resource.data.ownerId || 
+        request.auth.uid in resource.data.allowedUsers
+      );
+
+      // ALLOW UPDATE:
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.ownerId || 
+        request.auth.uid in resource.data.allowedUsers ||
+        
+        // ALLOW JOINING VIA CODE:
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['allowedUsers']) &&
+          request.resource.data.allowedUsers.hasAll(resource.data.allowedUsers) &&
+          request.resource.data.allowedUsers.size() == resource.data.allowedUsers.size() + 1 &&
+          request.auth.uid in request.resource.data.allowedUsers
+        )
+      );
+
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+
+      // --- SUBCOLLECTION RULES ---
+      match /items/{itemId} {
+        allow read, write: if isAuthenticated() && (
+          get(/databases/$(database)/documents/lists/$(listId)).data.ownerId == request.auth.uid ||
+          request.auth.uid in get(/databases/$(database)/documents/lists/$(listId)).data.allowedUsers
+        );
+      }
+    }
+  }
+}

@@ -1,67 +1,71 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
-interface ThemeColors {
+export interface ThemeColors {
   background: string;
   card: string;
   text: string;
-  textSecondary: string;
-  border: string;
+  textDim: string;
   primary: string;
   danger: string;
+  border: string;
 }
 
-export interface Theme {
-  isDarkMode: boolean;
+const lightColors: ThemeColors = {
+  background: '#F2F2F7',
+  card: '#FFFFFF',
+  text: '#333333',
+  textDim: '#888888',
+  primary: '#007AFF', // Standard iOS Blue
+  danger: '#FF3B30',
+  border: '#E5E5EA',
+};
+
+const darkColors: ThemeColors = {
+  background: '#000000',
+  card: '#1C1C1E',
+  text: '#FFFFFF',
+  textDim: '#EBEBF5',
+  primary: '#0A84FF',
+  danger: '#FF453A',
+  border: '#38383A',
+};
+
+interface ThemeContextProps {
+  isDark: boolean;
   colors: ThemeColors;
   toggleTheme: () => void;
 }
 
-const lightColors: ThemeColors = {
-  background: '#f8f9fa',
-  card: '#ffffff',
-  text: '#000000',
-  textSecondary: '#666666',
-  border: '#e0e0e0',
-  primary: '#007AFF',
-  danger: '#FF3B30',
-};
-
-const darkColors: ThemeColors = {
-  background: '#121212',
-  card: '#1e1e1e',
-  text: '#ffffff',
-  textSecondary: '#aaaaaa',
-  border: '#333333',
-  primary: '#0A84FF',
-  danger: '#FF453A',
-};
-
-const ThemeContext = createContext<Theme>({
-  isDarkMode: false,
+const ThemeContext = createContext<ThemeContextProps>({
+  isDark: false,
   colors: lightColors,
   toggleTheme: () => {},
 });
 
-export const useAppTheme = () => useContext(ThemeContext);
-
-export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
+/**
+ * Provides application-wide colors and handles light/dark mode transitions based on system preferences.
+ */
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const [isDarkMode, setIsDarkMode] = useState(systemColorScheme === 'dark');
+  const [isDark, setIsDark] = useState(systemColorScheme === 'dark');
 
-  // We could also persist this selection to AsyncStorage here, but keeping it simple for now.
+  // Listen for system theme changes and update automatically
+  useEffect(() => {
+    setIsDark(systemColorScheme === 'dark');
+  }, [systemColorScheme]);
 
-  const toggleTheme = () => setIsDarkMode((prev) => !prev);
-
-  const theme: Theme = {
-    isDarkMode,
-    colors: isDarkMode ? darkColors : lightColors,
-    toggleTheme,
-  };
+  const toggleTheme = () => setIsDark(prev => !prev);
+  const colors = isDark ? darkColors : lightColors;
 
   return (
-    <ThemeContext.Provider value={theme}>
+    <ThemeContext.Provider value={{ isDark, colors, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
 };
+
+/**
+ * Hook to access the current theme colors and toggle functions.
+ */
+export const useAppTheme = () => useContext(ThemeContext);

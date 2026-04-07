@@ -1,10 +1,33 @@
 import { Timestamp } from "firebase/firestore";
 
+/**
+ * COMPREHENSIVE USER PROFILE
+ * This is the full profile shape created during registration.
+ */
 export interface User {
   uid: string;
   email: string;
-  displayName?: string;
-  isPremium?: boolean;
+  displayName: string;
+  givenName: string;
+  familyName: string;
+  photoURL: string | null;
+  birthday: Date | null | Timestamp; // Firestore returns Timestamp, code often sets Date
+  isPremium: boolean;
+  createdAt: Date | null | Timestamp;
+
+  minorProtection: {
+    isMinor: boolean;
+    parentEmail: string;
+  };
+
+  legalAcceptance: {
+    termsAccepted: boolean;
+    privacyAccepted: boolean;
+    acceptanceDate: Date | null | Timestamp;
+    isEUUser: boolean;
+    gdprApplies: boolean;
+    acceptedDataProcessing: boolean;
+  };
 }
 
 export interface GiftList {
@@ -12,9 +35,10 @@ export interface GiftList {
   ownerId: string;
   title: string;
   isPrivate: boolean;
+  shareCode?: string;
   allowedUsers: string[]; // Array of User UIDs
-  createdAt: Timestamp; // Firestore Timestamp
-  shareCode: string;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp | null;
 }
 
 export interface GiftItem {
@@ -25,7 +49,8 @@ export interface GiftItem {
   price?: number;
   imageUri?: string;
   url?: string;           // External retailer URL
-  createdAt?: Timestamp;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp | null;
   substitutions: boolean;
 }
 
@@ -61,15 +86,8 @@ export interface Feedback {
   text: string;
   type: 'bug' | 'feature' | 'general';
   createdAt: Timestamp;
-  platform?: string;
-  osVersion?: string | number;
-  appVersion?: string;
 }
 
 export interface Friend {
-  id : string, 
-  userId : string, // requester 
-  friendId : string, // recipient 
-  status : 'pending' | 'accepted', 
-  createdAt: Timestamp
+
 }
