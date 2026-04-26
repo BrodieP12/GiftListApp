@@ -21,6 +21,7 @@ import { AuthService } from '../services/AuthService';
 import { UserService, createDefaultUser } from '../services/UserService';
 import { auth } from '../api/firebase';
 import { useAppTheme } from '../theme/ThemeContext';
+import {CrashLogger} from "../services/LoggingService";
 
 const Checkbox = ({ value, onValueChange, label, themeColors }: any) => (
   <TouchableOpacity 
@@ -96,6 +97,7 @@ export const CreateProfile = ({ navigation }: any) => {
           }
         } catch (error) {
           // Geolocation check failed
+          CrashLogger.error(error);
         } finally {
           setCheckingLocation(false);
         }
@@ -173,6 +175,7 @@ export const CreateProfile = ({ navigation }: any) => {
       await UserService.createUserDocument(newUser);
       Alert.alert("Success", "Account created successfully!");
     } catch (error: any) {
+      CrashLogger.error(error);
       Alert.alert('Registration Failed', error.message || "An unexpected error occurred.");
     } finally {
       setIsSubmitting(false);

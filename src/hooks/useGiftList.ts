@@ -4,6 +4,7 @@ import { ListService } from '../services/ListService';
 import { ClaimService } from '../services/ClaimService';
 import { useAuth } from './useAuth';
 import { GiftItemUI } from '../types/models';
+import {CrashLogger} from "../services/LoggingService";
 
 export const useGiftList = (listId: string, ownerId: string) => {
   const { user } = useAuth();
@@ -25,7 +26,7 @@ export const useGiftList = (listId: string, ownerId: string) => {
 
     try {
       // Permission check
-      const listData = await ListService.getListById(listId);
+      const listData = await ListService.getList(listId);
       if (!listData) {
         setIsAllowed(false);
         setLoading(false);
@@ -62,6 +63,7 @@ export const useGiftList = (listId: string, ownerId: string) => {
       }
 
     } catch (err) {
+      CrashLogger.error(err);
       setError('Failed to load list items.');
     } finally {
       setLoading(false);
@@ -97,6 +99,7 @@ export const useGiftList = (listId: string, ownerId: string) => {
       await fetchItems();
 
     } catch (e) {
+      CrashLogger.error(e);
       Alert.alert("Error", "Could not update claim status.");
     }
   };

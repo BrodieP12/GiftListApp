@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { GiftItemUI, ItemClaim } from '../types/models';
 import { ListService } from '../services/ListService';
 import { ClaimService } from '../services/ClaimService';
+import {CrashLogger} from "../services/LoggingService";
 
 /**
  * Custom hook to encapsulate the logic for fetching custom lists and handling the
@@ -63,8 +64,9 @@ export const useListDetail = (ownerId: string, listId: string, isOwner: boolean,
                 await ClaimService.claimItem(itemId, currentUserId, ownerId, listId);
             }
             // We no longer need to await fetchListData(); onSnapshot does it automatically!
-        } catch (err) {
-            setError(err instanceof Error ? err : new Error('Could not update the claim. Please try again.'));
+        } catch (error) {
+            CrashLogger.error(error);
+            setError(error instanceof Error ? error : new Error('Could not update the claim. Please try again.'));
         }
     };
 

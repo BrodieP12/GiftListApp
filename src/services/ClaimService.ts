@@ -1,15 +1,4 @@
-import { 
-
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  setDoc, 
-  doc, 
-  deleteDoc,
-  serverTimestamp,
-  onSnapshot
-} from 'firebase/firestore';
+import firestore from '@react-native-firebase/firestore';
 import { db } from '../api/firebase';
 import { ItemClaim } from '../types/models';
 
@@ -26,12 +15,11 @@ export const ClaimService = {
     // We query claims where we are NOT the owner (conceptually), 
     // but Firestore queries are specific. We'll query all claims that match this list's owner 
     // to map them to items.
-    const q = query(
-      collection(db, 'claims'), 
-      where('listOwnerId', '==', ownerId),
-      where('listId', '==', listId));
-
-    const snapshot = await getDocs(q);
+    const snapshot = await db
+      .collection('claims')
+      .where('listOwnerId', '==', ownerId)
+      .where('listId', '==', listId)
+      .get();
     
     const claims: Record<string, ItemClaim> = {};
     snapshot.forEach(doc => {
@@ -47,32 +35,33 @@ export const ClaimService = {
     onUpdate: (claims: Record<string, ItemClaim>) => void, 
     onError: (err: Error) => void
   ) {
-    const q = query(
-      collection(db, 'claims'), 
-      where('listOwnerId', '==', ownerId),
-      where('listId', '==', listId));
-
-    return onSnapshot(q, (snapshot) => {
-      const claims: Record<string, ItemClaim> = {};
-      snapshot.forEach(doc => {
-        claims[doc.id] = doc.data() as ItemClaim;
-      });
-      onUpdate(claims);
-    }, onError);
+    return db
+      .collection('claims')
+      .where('listOwnerId', '==', ownerId)
+      .where('listId', '==', listId)
+      .onSnapshot((snapshot) => {
+        const claims: Record<string, ItemClaim> = {};
+        if (snapshot) {
+          snapshot.forEach(doc => {
+            claims[doc.id] = doc.data() as ItemClaim;
+          });
+        }
+        onUpdate(claims);
+      }, onError);
   },
 
   async claimItem(itemId: string, userId: string, listOwnerId: string, listId: string) {
     // We use the itemId as the document ID for the claim to ensure 1:1 relationship
-    await setDoc(doc(db, 'claims', itemId), {
+    await db.collection('claims').doc(itemId).set({
       itemId,
       claimedBy: userId,
       listOwnerId,
       listId,
-      claimedAt: serverTimestamp()
+      claimedAt: firestore.FieldValue.serverTimestamp()
     });
   },
 
   async unclaimItem(itemId: string) {
-    await deleteDoc(doc(db, 'claims', itemId));
+    await db.collection('claims').doc(itemId).delete();
   }
 };

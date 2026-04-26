@@ -37,7 +37,8 @@ export interface GiftList {
   isPrivate: boolean;
   shareCode?: string;
   allowedUsers: string[]; // Array of User UIDs
-  createdAt: Timestamp;
+  clientCreatedAt: Timestamp;
+  serverReceivedAt: Timestamp;
   updatedAt?: Timestamp | null;
 }
 
@@ -49,7 +50,8 @@ export interface GiftItem {
   price?: number;
   imageUri?: string;
   url?: string;           // External retailer URL
-  createdAt: Timestamp;
+  clientCreatedAt: Timestamp;
+  serverReceivedAt: Timestamp;
   updatedAt?: Timestamp | null;
   substitutions: boolean;
 }

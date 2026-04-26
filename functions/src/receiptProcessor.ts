@@ -15,6 +15,7 @@ async function fetchProductImage(productName: string, brand: string = ""): Promi
         return "";
     } catch (error) {
         console.error(`❌ Image search error for ${productName}:`, error);
+
         return "";
     }
 }

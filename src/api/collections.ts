@@ -1,4 +1,4 @@
-import { collection, CollectionReference, DocumentData } from 'firebase/firestore';
+import { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 import { db } from './firebase';
 import { GiftList, GiftItem, ItemClaim, User } from '../types/models';
 
@@ -8,13 +8,13 @@ import { GiftList, GiftItem, ItemClaim, User } from '../types/models';
  */
 
 // 1. Root Collections
-export const listsRef = collection(db, 'lists') as CollectionReference<GiftList>;
-export const claimsRef = collection(db, 'claims') as CollectionReference<ItemClaim>;
-export const usersRef = collection(db, 'users') as CollectionReference<User>;
+export const listsRef = db.collection('lists') as FirebaseFirestoreTypes.CollectionReference<GiftList>;
+export const claimsRef = db.collection('claims') as FirebaseFirestoreTypes.CollectionReference<ItemClaim>;
+export const usersRef = db.collection('users') as FirebaseFirestoreTypes.CollectionReference<User>;
 
 // 2. Sub-Collections (Function required because the path is dynamic)
 export const getItemsRef = (listId: string) => {
-  return collection(db, `lists/${listId}/items`) as CollectionReference<GiftItem>;
+  return db.collection(`lists/${listId}/items`) as FirebaseFirestoreTypes.CollectionReference<GiftItem>;
 };
 
 // 3. Grouping for easier imports (Optional)

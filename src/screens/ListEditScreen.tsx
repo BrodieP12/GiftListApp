@@ -20,7 +20,8 @@ import { Button } from '../components/common/Button';
 import {GiftItemUI, GiftList, User} from '../types/models';
 import { RouteProp } from '@react-navigation/native';
 import { AppStackParamList } from '../navigation/AppNavigator';
-import { useAppTheme, ThemeColors } from '../theme/ThemeContext'; // IMPORT THEME Context
+import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
+import {CrashLogger} from "../services/LoggingService"; // IMPORT THEME Context
 
 type ListEditScreenRouteProp = RouteProp<AppStackParamList, 'ListEdit'>;
 
@@ -64,6 +65,7 @@ export const ListEditScreen = () => {
         setParticipants(users);
       }
     } catch (error) {
+      CrashLogger.error(error);
       Alert.alert('Error', 'Failed to load list details.');
     } finally {
       setLoading(false);
@@ -89,6 +91,7 @@ export const ListEditScreen = () => {
       Alert.alert('Success', 'List updated successfully');
       navigation.goBack();
     } catch (error) {
+      CrashLogger.error(error);
       Alert.alert('Error', 'Failed to update list. Please try again.');
     } finally {
       setSaving(false);

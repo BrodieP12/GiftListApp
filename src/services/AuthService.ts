@@ -1,11 +1,6 @@
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut,
-  fetchSignInMethodsForEmail,
-  AuthError
-} from 'firebase/auth';
-import { auth } from '../api/firebase';
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { CrashLogger } from './LoggingService'
+import { auth, functions } from '../api/firebase';
 
 export const AuthService = {
   /**
@@ -14,23 +9,16 @@ export const AuthService = {
    */
   async isEmailInUse(email: string): Promise<boolean> {
     const cleanEmail = email.trim().toLowerCase();
-    
-    try {
-      // 1. Check Firebase Auth (Works for legacy users if enumeration protection is off)
-      const methods = await fetchSignInMethodsForEmail(auth, cleanEmail);
-      if (methods.length > 0) return true;
 
-      // 2. Fallback: Check Firestore (Works for new users with profiles)
-      // Note: Requires 'allow list: if request.query.limit <= 1' in firestore.rules
-      const { collection, query, where, getDocs, limit, getFirestore } = await import('firebase/firestore');
-      const db = getFirestore();
-      const userRef = collection(db, 'users');
-      const q = query(userRef, where('email', '==', cleanEmail), limit(1));
-      const snapshot = await getDocs(q);
-      
-      return !snapshot.empty;
+    try {
+      const checkEmailFunc = functions.httpsCallable<{ email: string }, { inUse: boolean }>('checkEmailInUse');
+
+      const response = await checkEmailFunc({ email: cleanEmail });
+      return response.data.inUse;
+
     } catch (error) {
-      // Fallback: assume not in use and let the actual registration throw if needed
+      CrashLogger.error(error, 'AuthService.isEmailInUse');
+      // On failure, fail safely and let Firebase Auth handle it downstream
       return false;
     }
   },
@@ -39,9 +27,10 @@ export const AuthService = {
    */
   async login(email: string, pass: string) {
     try {
-      await signInWithEmailAndPassword(auth, email, pass);
+      await auth.signInWithEmailAndPassword(email, pass);
     } catch (error) {
-      throw this.handleError(error as AuthError);
+      CrashLogger.error(error);
+      throw this.handleError(error as FirebaseAuthTypes.NativeFirebaseAuthError, true);
     }
   },
 
@@ -50,9 +39,10 @@ export const AuthService = {
    */
   async register(email: string, pass: string) {
     try {
-      await createUserWithEmailAndPassword(auth, email, pass);
+      await auth.createUserWithEmailAndPassword(email, pass);
     } catch (error) {
-      throw this.handleError(error as AuthError);
+      CrashLogger.error(error);
+      throw this.handleError(error as FirebaseAuthTypes.NativeFirebaseAuthError, false);
     }
   },
 
@@ -61,38 +51,40 @@ export const AuthService = {
    */
   async logout() {
     try {
-      await signOut(auth);
+      await auth.signOut();
     } catch (error) {
       // Logout failed
+      CrashLogger.error(error);
     }
   },
-
   /**
    * Helper to map Firebase error codes to readable messages.
    */
-  handleError(error: AuthError): Error {
-    let message = 'An unexpected error occurred.';
-    
-    switch (error.code) {
-      case 'auth/invalid-email':
-        message = 'Please enter a valid email address.';
-        break;
-      case 'auth/user-disabled':
-        message = 'This account has been disabled.';
-        break;
-      case 'auth/user-not-found':
-      case 'auth/wrong-password':
-      case 'auth/invalid-credential':
-        message = 'Invalid email or password.';
-        break;
-      case 'auth/email-already-in-use':
-        message = 'An account with this email already exists.';
-        break;
-      case 'auth/weak-password':
-        message = 'Password should be at least 6 characters.';
-        break;
+  handleError(error: FirebaseAuthTypes.NativeFirebaseAuthError, loggingIn: boolean): Error {
+    const mappedResponse = AUTH_MESSAGES[error.code];
+    let finalMessage = 'An unexpected error occurred.';
+
+    if(typeof mappedResponse === 'string') {
+      finalMessage = mappedResponse;
+    } else if(typeof mappedResponse === 'object') {
+      finalMessage = loggingIn ? mappedResponse.login : mappedResponse.signup;
     }
 
-    return new Error(message);
-  }
+    return new Error(finalMessage);
+  },
+
 };
+const AUTH_MESSAGES: Record<string, string | {login: string, signup: string}> = {
+  'auth/invalid-email': {
+    login: 'Invalid email or password.',
+    signup: 'Please enter a valid email address.'
+  },
+  'auth/user-disabled': 'This account has been disabled.',
+  'auth/user-not-found': 'Invalid email or password.',
+  'auth/wrong-password': 'Invalid email or password.',
+  'auth/invalid-credential': 'Invalid email or password.',
+  'auth/email-already-in-use': 'An account with this email already exists.',
+  'auth/weak-password': 'Password should be at least 6 characters.',
+  'auth/too-many-requests': 'Too many attempts. Try again later.',
+
+}

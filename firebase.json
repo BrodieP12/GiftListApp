@@ -1,6 +1,6 @@
 {
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firebase_config/firestore.rules"
   },
   "functions": [
     {
@@ -28,7 +28,7 @@
     ]
   },
   "remoteconfig": {
-    "template": "remote_config.json"
+    "template": "firebase_config/remote_config.json"
   },
   "emulators": {
     "functions": {

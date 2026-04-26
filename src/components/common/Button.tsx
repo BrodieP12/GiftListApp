@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   TouchableOpacity, 
   Text, 
-  ActivityIndicator, 
+  ActivityIndicator,
   StyleSheet, 
   ViewStyle, 
   TextStyle,

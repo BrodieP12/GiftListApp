@@ -10,6 +10,7 @@ import { useAppTheme, ThemeColors } from '../theme/ThemeContext'; // IMPORT THEM
 import * as ImagePicker from 'expo-image-picker';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { KeyboardAwareScrollView} from "react-native-keyboard-aware-scroll-view";
+import {CrashLogger} from "../services/LoggingService";
 
 type AddItemRouteProp = RouteProp<AppStackParamList, 'AddItem'>;
 
@@ -76,6 +77,7 @@ export const AddItemScreen = () => {
       if (data.description) setDescription(data.description);
 
     } catch (error) {
+      CrashLogger.error(error);
       Alert.alert("Data Collection failed. Sending URL to review. Please type in the data manually.")
     } finally {
       setScraping(false);
@@ -101,6 +103,8 @@ export const AddItemScreen = () => {
       });
       navigation.goBack();
     } catch (e) {
+      // @ts-ignore
+      CrashLogger.error(e);
       Alert.alert('Error', 'Failed to add item. Please try again.');
     } finally {
       setSubmitting(false);

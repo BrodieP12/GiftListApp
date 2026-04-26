@@ -2,20 +2,39 @@
   "expo": {
     "name": "GiftListApp",
     "slug": "giftlistapp",
-    "version": "1.0.6",
+    "version": "1.0.11",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "android": {
-      "googleServicesFile": "./google-services.json",
+      "googleServicesFile": "google-services.json",
       "package": "com.brodiepasker.giftlistapp",
-      "versionCode": 7
+      "versionCode": 12
     },
     "plugins": [
       "@react-native-firebase/app",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@react-native-firebase/crashlytics",
+      "expo-build-properties",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "firebase": {
+              "crashlytics": true
+            }
+          }
+        }
+      ],
+      "@react-native-firebase/auth",
+      "@react-native-firebase/app-check"
     ],
     "extra": {
       "eas": {
-        "projectId": "e3e24dce-3514-4b98-afcb-ee7176caf90c"
+        "projectId": "0e5d0093-91ec-45c8-b877-a96d82464ff4"
       },
       "updates": {
         "url": "https://u.expo.dev/019d63c0-baca-716a-ab24-a583866fee7a",
@@ -25,12 +44,12 @@
         "policy": "appVersion"
       }
     },
-    "owner": "bpasker20s-organization",
+    "owner": "bpasker20",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/e3e24dce-3514-4b98-afcb-ee7176caf90c"
+      "url": "https://u.expo.dev/0e5d0093-91ec-45c8-b877-a96d82464ff4"
     },
     "ios": {}
   }

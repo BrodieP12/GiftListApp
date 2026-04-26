@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User } from '../types/models';
 import { UserService } from '../services/UserService';
+import {CrashLogger} from "../services/LoggingService";
 
 interface UseUserProfileResult {
   profile: User | null;
@@ -32,6 +33,7 @@ export const useUserProfile = (uid: string | null): UseUserProfileResult => {
           setProfile(userDoc);
         }
       } catch (error) {
+        CrashLogger.error(error);
         // Failed to fetch user profile
       } finally {
         if (!cancelled) {

@@ -16,6 +16,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../navigation/AppNavigator';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
+import {CrashLogger} from "../services/LoggingService";
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -41,6 +42,7 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
     try {
       await AuthService.login(email, password);
     } catch (error: any) {
+      CrashLogger.error(error);
       Alert.alert('Authentication Failed', error.message);
     } finally {
       setLoading(false);

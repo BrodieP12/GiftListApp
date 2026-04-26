@@ -1,5 +1,5 @@
-import { httpsCallable } from 'firebase/functions';
 import { functions } from '../api/firebase';
+import {CrashLogger} from "./LoggingService";
 
 export interface ScrapedData {
   title?: string;
@@ -24,10 +24,7 @@ export const RetailerService = {
     try {
       // 2. Define the Cloud Function reference
       // Ensure you have deployed a function named 'scrapeProduct' to Firebase!
-      const scrapeFunction = httpsCallable<{ url: string }, ScrapedData>(
-        functions, 
-        'scrapeProduct'
-      );
+      const scrapeFunction = functions.httpsCallable<{ url: string }, ScrapedData>('scrapeProduct');
 
       // 3. Execute the function
       const response = await scrapeFunction({ url });
@@ -42,6 +39,7 @@ export const RetailerService = {
       };
 
     } catch (error) {
+      CrashLogger.error(error);
       return {}; 
     }
   },

@@ -5,10 +5,10 @@ import React, {
   useState, 
   ReactNode 
 } from 'react';
-import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '../api/firebase';
 import { User as AppUser } from '../types/models';
 import { UserService, createDefaultUser } from '../services/UserService';
+import {CrashLogger} from "../services/LoggingService";
 
 // 1. Define the Shape of the Context
 interface AuthContextType {
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     // Subscribe to auth state changes from Firebase
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         setLoading(true); // Maintain loading while fetching firestore doc
         try {
@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setUser(newUser);
           }
         } catch (error) {
+          CrashLogger.error(error)
           setUser(null);
         } finally {
           setLoading(false);
@@ -66,7 +67,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logout = async () => {
     try {
-      await firebaseSignOut(auth);
+      await auth.signOut();
     } catch (error) {
       // Logout failed
     }

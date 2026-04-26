@@ -15,6 +15,7 @@ import { ShareCodeModal } from '../components/modals/ShareCodeModal';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftListRow } from '../components/lists/GiftListRow';
 import { ConfirmationModal } from '../components/modals/Confirmation';
+import {CrashLogger} from "../services/LoggingService";
 
 type DashboardNavProp = StackNavigationProp<AppStackParamList, 'Dashboard'>;
 
@@ -50,6 +51,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
             }
         } catch (error) {
             const err = error as Error;
+            CrashLogger.error(err);
             Alert.alert('Error', err.message || 'Failed to create list');
         } finally {
             setCreateLoading(false);
@@ -67,6 +69,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
             await deleteList(deleteTargetId);
             fetchLists();
         } catch (error) {
+            CrashLogger.error(error);
             Alert.alert('Error', 'Failed to delete list');
         } finally {
             setConfirmVisible(false);

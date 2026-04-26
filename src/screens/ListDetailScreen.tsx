@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator 
+import React, {useEffect, useRef, useState} from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert
 } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -10,6 +10,10 @@ import { useListDetail } from '../hooks/useListDetail';
 import { useAppTheme } from '../theme/ThemeContext';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftItemRow } from '../components/lists/GiftItemRow';
+import { CrashLogger } from '../services/LoggingService';
+import { ItemClaim } from '../types/models';
+import { ConfirmationModal } from '../components/modals/Confirmation';
+import { ListService } from '../services/ListService';
 
 type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
 
@@ -18,13 +22,35 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
   const { user } = useAuth();
   const { colors } = useAppTheme();
 
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+
   const currentUserId = user?.uid ?? ''; 
   const isOwner = currentUserId === ownerId;
 
   // Extracted logic using our new custom hook!
-  const { items, loading, fetchListData, handleToggleClaim } = useListDetail(
+  const { items, loading, handleToggleClaim } = useListDetail(
     ownerId, listId, isOwner, currentUserId
   );
+
+  const handleDeletePress = (id: string) => {
+    setDeleteTargetId(id);
+    setConfirmVisible(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+    try {
+      await ListService.deleteItem(listId, deleteTargetId);
+    } catch (error) {
+      CrashLogger.error(error);
+      Alert.alert('Error', 'Failed to delete item');
+    } finally {
+      setConfirmVisible(false);
+      setDeleteTargetId(null);
+    }
+  };
+  // Removed obsolete dashboard components
 
   useEffect(() => {
     // Set Header button for Edit if owner
@@ -42,35 +68,36 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
     }
   }, [listId, ownerId, isOwner, navigation, colors.primary]);
 
-  if (loading) {
-    return (
-        // Utilizing dynamic AppTheme Colors
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <FlatList
-        data={items}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
-        renderItem={({ item }) => (
-          <GiftItemRow 
-            {...item} 
-            currentUserId={currentUserId}
-            isOwner={isOwner}
-            onToggleClaim={handleToggleClaim}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: colors.textDim }]}>No items in this list yet.</Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
+          renderItem={({ item }) => (
+            <GiftItemRow
+                {...item}
+                item={item}
+                claim={(item.claimStatus || { claimedBy: '' }) as ItemClaim}
+                onPress={() => {}}
+                onDelete={handleDeletePress}
+                currentUserId={currentUserId}
+                isOwner={isOwner}
+                onToggleClaim={handleToggleClaim}
+            />
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyText, { color: colors.textDim }]}>No items in this list yet.</Text>
+            </View>
+          }
+        />
+      )}
 
       {isOwner && (
         <TouchableOpacity 
@@ -81,6 +108,14 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
           <Text style={styles.fabText}>Add Item</Text>
         </TouchableOpacity>
       )}
+
+      <ConfirmationModal
+        visible={confirmVisible}
+        title="Delete Item"
+        message="Are you sure you want to delete this item? This action cannot be undone."
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmVisible(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -88,6 +123,7 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { padding: 16 },
   emptyState: { marginTop: 50, alignItems: 'center' },
   emptyText: { fontSize: 16 },

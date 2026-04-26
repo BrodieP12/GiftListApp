@@ -52,9 +52,9 @@ describe('ListService.createList', () => {
 
     const result = await ListService.createList('user123', 'My New List');
 
-    // We expect the result to be a 7 character string
-    expect(typeof result).toBe('string');
-    expect(result!.length).toBe(7);
+    // We expect the result.shareCode to be a 7 character string
+    expect(typeof result.shareCode).toBe('string');
+    expect(result.shareCode!.length).toBe(7);
 
     // Verify transaction.get was called to check uniqueness inside runTransaction
     expect(mockTransactionGet).toHaveBeenCalled();

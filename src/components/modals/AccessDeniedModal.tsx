@@ -20,7 +20,7 @@ export const AccessDeniedModal = ({ visible, onGoBack }: AccessDeniedModalProps)
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
           <Text style={[styles.modalTitle, { color: colors.text }]}>Access Denied</Text>
-          <Text style={[styles.modalText, { color: colors.textSecondary }]}>
+          <Text style={[styles.modalText, { color: colors.textDim }]}>
             You do not have permission to view this list.
           </Text>
           <Button 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ToastAndroid } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/common/Button';
@@ -11,10 +11,13 @@ import { useFeedback } from '../theme/FeedbackContext';
 import ProfileImage from '../components/common/ProfileImage';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 
+
 export const UserProfileScreen = () => {
   const [displayVersion, setDisplayVersion] = useState('1.0.0');
+  const [ logging, setLogging ] = useState(false);
   const { user, logout } = useAuth();
   const { openFeedback } = useFeedback();
+
 
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
@@ -40,6 +43,8 @@ export const UserProfileScreen = () => {
 
     fetchRemoteConfig();
   }, []);
+
+
 
   const fullName = `${user?.givenName || ''} ${user?.familyName || ''}`.trim() || user?.displayName || 'User';
 

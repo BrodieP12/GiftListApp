@@ -1,6 +1,7 @@
-import { doc, getDoc, setDoc, serverTimestamp, Timestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import firestore from '@react-native-firebase/firestore';
 import { db } from '../api/firebase';
 import { User } from '../types/models';
+import { convertDate } from './utils';
 
 /**
  * Creates a default User object with sensible defaults.
@@ -38,9 +39,9 @@ export const UserService = {
    * Creates or overwrites a user document in Firestore.
    */
   async createUserDocument(user: User): Promise<void> {
-    await setDoc(doc(db, 'users', user.uid), {
+    await db.collection('users').doc(user.uid).set({
       ...user,
-      createdAt: serverTimestamp(),
+      createdAt: firestore.FieldValue.serverTimestamp(),
     });
   },
 
@@ -63,34 +64,25 @@ export const UserService = {
    * Returns null if no document exists.
    */
   async getUserDocument(uid: string): Promise<User | null> {
-    const docRef = doc(db, 'users', uid);
-    const snapshot = await getDoc(docRef);
+    const docRef = db.collection('users').doc(uid);
+    const snapshot = await docRef.get();
 
-    if (!snapshot.exists()) {
+    if (!snapshot.exists) {
       return null;
     }
 
     const data = snapshot.data();
     
     // Helper to convert Firestore Timestamps back to JS Date objects
-    const convertDate = (val: any): Date | null => {
-      if (!val) return null;
-      if (val instanceof Timestamp) return val.toDate();
-      if (val instanceof Date) return val;
-      if (typeof val === 'object' && val.seconds !== undefined) {
-        return new Timestamp(val.seconds, val.nanoseconds).toDate();
-      }
-      return null;
-    };
 
     const user: User = {
       uid,
       ...data,
-      birthday: convertDate(data.birthday),
-      createdAt: convertDate(data.createdAt),
+      birthday: convertDate(data?.birthday),
+      createdAt: convertDate(data?.createdAt),
       legalAcceptance: {
-        ...data.legalAcceptance,
-        acceptanceDate: convertDate(data.legalAcceptance?.acceptanceDate),
+        ...data?.legalAcceptance,
+        acceptanceDate: convertDate(data?.legalAcceptance?.acceptanceDate),
       },
     } as User;
 

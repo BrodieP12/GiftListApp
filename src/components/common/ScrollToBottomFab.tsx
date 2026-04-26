@@ -1,6 +1,6 @@
 // src/components/ScrollToBottomFab.tsx
 import React, { useEffect, useRef } from 'react';
-import { Animated, TouchableOpacity, Text } from 'react-native';
+import { Animated, TouchableOpacity, Text, StyleSheet } from 'react-native';
 
 interface ScrollToBottomFabProps {
     visible: boolean;
@@ -22,20 +22,20 @@ export const ScrollToBottomFab = ({ visible, onPress }: ScrollToBottomFabProps) 
 
     return (
         <Animated.View
-            style={{
-                position: 'absolute',
-                bottom: 24,
-                alignSelf: 'center',
-                opacity: fabAnim,
-                transform: [
-                    {
-                        scale: fabAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, 1],
-                        }),
-                    },
-                ],
-            }}
+            style={[
+                styles.container, // ✅ Hoisted static styles
+                {
+                    opacity: fabAnim, // Dynamic animated styles
+                    transform: [
+                        {
+                            scale: fabAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 1],
+                            }),
+                        },
+                    ],
+                }
+            ]}
             // ✅ Safety measure: completely disables touches when hidden
             pointerEvents={visible ? 'auto' : 'none'}
         >
@@ -48,3 +48,12 @@ export const ScrollToBottomFab = ({ visible, onPress }: ScrollToBottomFabProps) 
         </Animated.View>
     );
 };
+
+// ✅ Static styles hoisted outside the render loop
+const styles = StyleSheet.create({
+    container: {
+        position: 'absolute',
+        bottom: 24,
+        alignSelf: 'center',
+    }
+});

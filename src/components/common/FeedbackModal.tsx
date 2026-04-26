@@ -16,6 +16,7 @@ import {
 import { Button } from './Button';
 import { FeedbackService } from '../../services/FeedbackService';
 import { useAuth } from '../../hooks/useAuth';
+import {CrashLogger} from "../../services/LoggingService";
 
 interface FeedbackModalProps {
   visible: boolean;
@@ -53,6 +54,7 @@ export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps) => {
       setType('general');
       onClose();
     } catch (error) {
+      CrashLogger.error(error);
       Alert.alert('Error', 'Could not send feedback. Please try again.');
     } finally {
       setLoading(false);
