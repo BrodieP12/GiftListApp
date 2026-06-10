@@ -1,4 +1,4 @@
-import { functions } from '../api/firebase';
+import { supabase } from '../api/supabase';
 import {CrashLogger} from "./LoggingService";
 
 export interface ScrapedData {
@@ -22,15 +22,14 @@ export const RetailerService = {
     }
 
     try {
-      // 2. Define the Cloud Function reference
-      // Ensure you have deployed a function named 'scrapeProduct' to Firebase!
-      const scrapeFunction = functions.httpsCallable<{ url: string }, ScrapedData>('scrapeProduct');
+      // 2. Invoke the `scrape-product` Edge Function (Deno).
+      const { data, error } = await supabase.functions.invoke<ScrapedData>(
+        'scrape-product',
+        { body: { url } }
+      );
+      if (error || !data) throw error ?? new Error('No data');
 
-      // 3. Execute the function
-      const response = await scrapeFunction({ url });
-      const data = response.data;
-
-      // 4. Sanitize the result (defensive coding)
+      // 3. Sanitize the result (defensive coding)
       return {
         title: data.title || '',
         price: typeof data.price === 'number' ? data.price : 0,

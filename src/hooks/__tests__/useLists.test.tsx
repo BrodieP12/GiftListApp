@@ -14,9 +14,15 @@ describe('useLists Hook', () => {
         jest.clearAllMocks();
     });
 
-    it('should fetch lists successfully for a valid user', async () => {
-        (ListService.getOwnedLists as jest.Mock).mockResolvedValue([{ id: '1', title: 'Test List' }]);
-        
+    it('subscribes to owned lists and updates on emit', async () => {
+        // The hook subscribes via listenToOwnedLists; drive its onUpdate callback.
+        (ListService.listenToOwnedLists as jest.Mock).mockImplementation(
+            (_userId, onUpdate) => {
+                onUpdate([{ id: '1', title: 'Test List' }]);
+                return () => {};
+            }
+        );
+
         let hookResult: any;
         const TestComponent = () => {
             hookResult = useLists('user123');
@@ -27,14 +33,23 @@ describe('useLists Hook', () => {
             create(<TestComponent />);
         });
 
-        expect(ListService.getOwnedLists).toHaveBeenCalledWith('user123');
+        expect(ListService.listenToOwnedLists).toHaveBeenCalledWith(
+            'user123',
+            expect.any(Function),
+            expect.any(Function)
+        );
         expect(hookResult.lists).toEqual([{ id: '1', title: 'Test List' }]);
         expect(hookResult.loading).toBe(false);
     });
 
-    it('should handle errors gracefully when fetch fails', async () => {
-        (ListService.getOwnedLists as jest.Mock).mockRejectedValue(new Error('Network error'));
-        
+    it('handles errors gracefully when the subscription errors', async () => {
+        (ListService.listenToOwnedLists as jest.Mock).mockImplementation(
+            (_userId, _onUpdate, onError) => {
+                onError(new Error('Network error'));
+                return () => {};
+            }
+        );
+
         let hookResult: any;
         const TestComponent = () => {
             hookResult = useLists('user123');
@@ -50,9 +65,10 @@ describe('useLists Hook', () => {
         expect(hookResult.loading).toBe(false);
     });
 
-    it('should create a new list and return the result', async () => {
+    it('creates a new list and returns the result', async () => {
+        (ListService.listenToOwnedLists as jest.Mock).mockReturnValue(() => {});
         (ListService.createList as jest.Mock).mockResolvedValue({ listId: 'new-123', shareCode: 'ABCD' });
-        
+
         let hookResult: any;
         const TestComponent = () => {
             hookResult = useLists('user123');

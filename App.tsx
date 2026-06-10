@@ -7,7 +7,8 @@
     import * as Updates from 'expo-updates';
     import { useUpdates } from 'expo-updates';
     import * as Application from 'expo-application';
-    import remoteConfig from '@react-native-firebase/remote-config';
+    import * as Sentry from '@sentry/react-native';
+    import { ConfigService, CONFIG_DEFAULTS } from './src/services/ConfigService';
     import { AuthProvider } from './src/hooks/useAuth';
     import { RootNavigator } from './src/navigation/AppNavigator';
     import { FeedbackTrigger } from './src/components/common/FeedbackTrigger';
@@ -18,6 +19,13 @@
     import * as SplashScreen from 'expo-splash-screen';
 
     SplashScreen.preventAutoHideAsync();
+
+    // Crash reporting (replaces Firebase Crashlytics).
+    Sentry.init({
+        dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
+        enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
+        tracesSampleRate: 0.2,
+    });
 
     const { width } = Dimensions.get('window');
 
@@ -46,32 +54,24 @@
         useEffect(() => {
             async function runUpdateCheck() {
 
-                await remoteConfig().setDefaults({
-                    latest_ota_version: "1.0.9",
-                    force_ota_update: false,
-                    required_native_version: Application.nativeApplicationVersion || "1.0.5.4", // Default to current version
-                    apk_download_url: "https://giftlistapp-557ce.web.app/latest.apk",
-                    latest_update_message: "Transitioning to Firebase for OTA updates"
-                });
+                // Defaults used when the remote fetch times out (was setDefaults()).
+                const defaults = {
+                    ...CONFIG_DEFAULTS,
+                    required_native_version:
+                        Application.nativeApplicationVersion || CONFIG_DEFAULTS.required_native_version,
+                };
 
                 try {
 
-                    // 1. Initialize Firebase Remote Config
-                    const fetchTimeout = new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('REMOTE_CONFIG_TIMEOUT')), 3000)
-                    );
+                    // 1. Fetch remote config from Supabase (get-config Edge Function),
+                    //    racing against an internal 3-second timeout.
+                    const config = await ConfigService.fetch(3000, defaults);
 
-                    // Race the Firebase fetch against our 3-second timer
-                    await Promise.race([
-                        remoteConfig().fetchAndActivate(),
-                        fetchTimeout
-                    ]);
-
-                    const remoteOtaId = remoteConfig().getValue('latest_ota_version').asString();
-                    const isForceUpdate = remoteConfig().getValue('force_ota_update').asBoolean();
-                    const requiredNativeVersion = remoteConfig().getValue('required_native_version').asString();
-                    const downloadUrl = remoteConfig().getValue('apk_download_url').asString();
-                    const latestUpdateMsg = remoteConfig().getValue('latest_update_message').asString() || "Internal improvements.";
+                    const remoteOtaId = config.latest_ota_version;
+                    const isForceUpdate = config.force_ota_update;
+                    const requiredNativeVersion = config.required_native_version;
+                    const downloadUrl = config.apk_download_url;
+                    const latestUpdateMsg = config.latest_update_message || "Internal improvements.";
 
                     const localOtaId = await AsyncStorage.getItem('current_ota_id');
                     const isFirstLaunch = await AsyncStorage.getItem('alreadyLaunched');

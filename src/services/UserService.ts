@@ -1,14 +1,13 @@
-import firestore from '@react-native-firebase/firestore';
-import { db } from '../api/firebase';
+import { supabase } from '../api/supabase';
 import { User } from '../types/models';
-import { convertDate } from './utils';
+import { profileFromRow, profileToRow } from '../api/mappers';
+import { CrashLogger } from './LoggingService';
 
 /**
  * Creates a default User object with sensible defaults.
- * Used during registration to build a new user document.
+ * Used during registration to build a new user profile.
  */
 export function createDefaultUser(uid: string, email: string): User {
-// ... (trimmed for space, I'll use the full content in the tool call)
   return {
     uid,
     email,
@@ -36,56 +35,51 @@ export function createDefaultUser(uid: string, email: string): User {
 
 export const UserService = {
   /**
-   * Creates or overwrites a user document in Firestore.
+   * Creates or updates the caller's profile row.
+   * The base row is created by the handle_new_user trigger at signup, so this
+   * is effectively an upsert of the editable profile fields.
    */
   async createUserDocument(user: User): Promise<void> {
-    await db.collection('users').doc(user.uid).set({
-      ...user,
-      createdAt: firestore.FieldValue.serverTimestamp(),
-    });
+    const { error } = await supabase
+      .from('profiles')
+      // email is NOT NULL in the schema, so set it explicitly (last) to keep
+      // it a definite string for the insert type.
+      .upsert({ ...profileToRow(user), id: user.uid, email: user.email });
+    if (error) {
+      CrashLogger.error(error, 'UserService.createUserDocument');
+      throw error;
+    }
   },
 
   /**
-   * Fetches multiple user documents from Firestore by their UIDs.
+   * Fetches multiple profiles by UID in a single query.
    */
   async getUserDocuments(uids: string[]): Promise<User[]> {
     if (!uids || uids.length === 0) return [];
-    
-    // Fetch all in parallel
-    const userPromises = uids.map(uid => this.getUserDocument(uid));
-    const results = await Promise.all(userPromises);
-    
-    // Filter out nulls (deleted users or invalid UIDs)
-    return results.filter((u): u is User => u !== null);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', uids);
+    if (error) {
+      CrashLogger.error(error, 'UserService.getUserDocuments');
+      throw error;
+    }
+    return (data ?? []).map(profileFromRow);
   },
 
   /**
-   * Fetches a user document from Firestore by UID.
-   * Returns null if no document exists.
+   * Fetches a single profile by UID. Returns null if none exists.
    */
   async getUserDocument(uid: string): Promise<User | null> {
-    const docRef = db.collection('users').doc(uid);
-    const snapshot = await docRef.get();
-
-    if (!snapshot.exists) {
-      return null;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', uid)
+      .maybeSingle();
+    if (error) {
+      CrashLogger.error(error, 'UserService.getUserDocument');
+      throw error;
     }
-
-    const data = snapshot.data();
-    
-    // Helper to convert Firestore Timestamps back to JS Date objects
-
-    const user: User = {
-      uid,
-      ...data,
-      birthday: convertDate(data?.birthday),
-      createdAt: convertDate(data?.createdAt),
-      legalAcceptance: {
-        ...data?.legalAcceptance,
-        acceptanceDate: convertDate(data?.legalAcceptance?.acceptanceDate),
-      },
-    } as User;
-
-    return user;
+    return data ? profileFromRow(data) : null;
   },
 };

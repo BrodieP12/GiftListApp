@@ -1,0 +1,46 @@
+# Supabase local/project configuration for GiftListApp.
+# `project_id` is the local stack identifier; link to the cloud project with
+#   supabase link --project-ref <ref>
+project_id = "giftlistapp"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+# The site URL / redirect URLs are only relevant for the local stack and web flows.
+site_url = "giftlistapp://"
+additional_redirect_urls = ["giftlistapp://"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+# Match Firebase's 6-char minimum password.
+# (GoTrue enforces a global minimum; per-length is handled client-side too.)
+
+[functions]
+# Edge Functions are declared per-directory under supabase/functions/.
+# Verify-JWT defaults can be overridden per function at deploy time.
+
+[edge_runtime]
+enabled = true

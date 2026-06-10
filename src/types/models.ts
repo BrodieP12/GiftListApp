@@ -1,4 +1,8 @@
-import { Timestamp } from "firebase/firestore";
+/**
+ * Timestamps now come from PostgreSQL/Supabase as ISO 8601 strings
+ * (timestamptz). The UI may also hold a JS Date before it is persisted.
+ */
+export type Timestamp = string;
 
 /**
  * COMPREHENSIVE USER PROFILE
@@ -11,7 +15,7 @@ export interface User {
   givenName: string;
   familyName: string;
   photoURL: string | null;
-  birthday: Date | null | Timestamp; // Firestore returns Timestamp, code often sets Date
+  birthday: Date | null | Timestamp; // Supabase returns an ISO string; UI may set a Date
   isPremium: boolean;
   createdAt: Date | null | Timestamp;
 

@@ -97,8 +97,17 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('CreateProfile')} 
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ForgotPassword')}
+          style={styles.forgotContainer}
+        >
+          <Text style={styles.switchText}>
+            Forgot Password?
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate('CreateProfile')}
           style={styles.switchContainer}
         >
           <Text style={styles.switchText}>
@@ -164,6 +173,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  forgotContainer: {
+    marginTop: 16,
+    alignItems: 'center',
   },
   switchContainer: {
     marginTop: 24,

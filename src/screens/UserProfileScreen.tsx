@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ToastAndroid } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/common/Button';
-import remoteConfig from '@react-native-firebase/remote-config';
 
 import Constants from 'expo-constants';
 
@@ -23,25 +22,12 @@ export const UserProfileScreen = () => {
   const styles = createStyles(colors);
 
   useEffect(() => {
-    const fetchRemoteConfig = async () => {
-      try {
-        // Set default values so the app has something to show immediately
-        await remoteConfig().setDefaults({
-          current_app_version: '1.0.0',
-        });
-
-        // Use 0 for 'every time' checks during testing (default is 12 hours)
-        await remoteConfig().fetch(43200);
-        await remoteConfig().activate();
-
-        const version = remoteConfig().getValue('current_app_version').asString();
-        setDisplayVersion(version);
-      } catch (error) {
-        console.error("Firebase Remote Config failed: ", error);
-      }
-    };
-
-    fetchRemoteConfig();
+    // Display the installed app version (was sourced from Remote Config).
+    const version =
+      Constants.expoConfig?.version ??
+      (Constants as any).manifest?.version ??
+      '1.0.0';
+    setDisplayVersion(version);
   }, []);
 
 

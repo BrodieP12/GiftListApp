@@ -5,7 +5,7 @@ import React, {
   useState, 
   ReactNode 
 } from 'react';
-import { auth } from '../api/firebase';
+import { supabase } from '../api/supabase';
 import { User as AppUser } from '../types/models';
 import { UserService, createDefaultUser } from '../services/UserService';
 import {CrashLogger} from "../services/LoggingService";
@@ -35,39 +35,47 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Subscribe to auth state changes from Firebase
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        setLoading(true); // Maintain loading while fetching firestore doc
-        try {
-          const firestoreUser = await UserService.getUserDocument(firebaseUser.uid);
-          
-          if (firestoreUser) {
-            setUser(firestoreUser);
-          } else {
-            const newUser = createDefaultUser(firebaseUser.uid, firebaseUser.email || '');
-            await UserService.createUserDocument(newUser);
-            setUser(newUser);
-          }
-        } catch (error) {
-          CrashLogger.error(error)
-          setUser(null);
-        } finally {
-          setLoading(false);
-        }
-      } else {
+    // Resolve the app-level profile for a Supabase auth user.
+    const resolveProfile = async (authUser: { id: string; email?: string } | null) => {
+      if (!authUser) {
         setUser(null);
         setLoading(false);
+        return;
       }
+      setLoading(true);
+      try {
+        let profile = await UserService.getUserDocument(authUser.id);
+        if (!profile) {
+          // The handle_new_user trigger normally creates the row; this is a
+          // fallback for any pre-trigger/legacy account.
+          const newUser = createDefaultUser(authUser.id, authUser.email || '');
+          await UserService.createUserDocument(newUser);
+          profile = newUser;
+        }
+        setUser(profile);
+      } catch (error) {
+        CrashLogger.error(error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Prime from any persisted session, then subscribe to changes.
+    supabase.auth.getSession().then(({ data }) => {
+      resolveProfile(data.session?.user ?? null);
     });
 
-    // Cleanup subscription on unmount
-    return unsubscribe;
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      resolveProfile(session?.user ?? null);
+    });
+
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   const logout = async () => {
     try {
-      await auth.signOut();
+      await supabase.auth.signOut();
     } catch (error) {
       // Logout failed
     }

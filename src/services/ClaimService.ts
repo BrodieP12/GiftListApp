@@ -1,67 +1,79 @@
-import firestore from '@react-native-firebase/firestore';
-import { db } from '../api/firebase';
+import { supabase } from '../api/supabase';
 import { ItemClaim } from '../types/models';
+import { claimFromRow } from '../api/mappers';
+import { CrashLogger } from './LoggingService';
 
 export const ClaimService = {
   /**
-   * Fetch all claims for a specific list's items.
-   * Note: In a real large app, you'd filter by listId or batch query item IDs.
-   * For this MVP, we fetch relevant claims.
+   * Fetch all claims for a list's items, keyed by itemId.
+   * RLS guarantees the list owner receives nothing here (surprise logic),
+   * so callers no longer need to guard on isOwner.
    */
-  async getClaimsForList(ownerId: string, listId: string): Promise<Record<string, ItemClaim>> {
-    // Security Rule Check: If we are the owner, this query might fail or return empty 
-    // depending on rules. But logically, we shouldn't even call this if isOwner is true.
-    
-    // We query claims where we are NOT the owner (conceptually), 
-    // but Firestore queries are specific. We'll query all claims that match this list's owner 
-    // to map them to items.
-    const snapshot = await db
-      .collection('claims')
-      .where('listOwnerId', '==', ownerId)
-      .where('listId', '==', listId)
-      .get();
-    
+  async getClaimsForList(
+    ownerId: string,
+    listId: string
+  ): Promise<Record<string, ItemClaim>> {
+    const { data, error } = await supabase
+      .from('claims')
+      .select('*')
+      .eq('list_owner_id', ownerId)
+      .eq('list_id', listId);
+    if (error) {
+      CrashLogger.error(error, 'ClaimService.getClaimsForList');
+      throw error;
+    }
+
     const claims: Record<string, ItemClaim> = {};
-    snapshot.forEach(doc => {
-      const data = doc.data() as ItemClaim;
-      claims[doc.id] = data; // doc.id is the itemId
-    });
+    for (const row of data ?? []) {
+      claims[row.item_id] = claimFromRow(row);
+    }
     return claims;
   },
 
   listenToClaimsForList(
-    ownerId: string, 
-    listId: string, 
-    onUpdate: (claims: Record<string, ItemClaim>) => void, 
+    ownerId: string,
+    listId: string,
+    onUpdate: (claims: Record<string, ItemClaim>) => void,
     onError: (err: Error) => void
   ) {
-    return db
-      .collection('claims')
-      .where('listOwnerId', '==', ownerId)
-      .where('listId', '==', listId)
-      .onSnapshot((snapshot) => {
-        const claims: Record<string, ItemClaim> = {};
-        if (snapshot) {
-          snapshot.forEach(doc => {
-            claims[doc.id] = doc.data() as ItemClaim;
-          });
-        }
-        onUpdate(claims);
-      }, onError);
+    const refetch = () =>
+      this.getClaimsForList(ownerId, listId).then(onUpdate).catch(onError);
+
+    refetch();
+
+    const channel = supabase
+      .channel(`claims:${listId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'claims', filter: `list_id=eq.${listId}` },
+        refetch
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   async claimItem(itemId: string, userId: string, listOwnerId: string, listId: string) {
-    // We use the itemId as the document ID for the claim to ensure 1:1 relationship
-    await db.collection('claims').doc(itemId).set({
-      itemId,
-      claimedBy: userId,
-      listOwnerId,
-      listId,
-      claimedAt: firestore.FieldValue.serverTimestamp()
+    // item_id is the primary key => upsert keeps the 1:1 relationship.
+    const { error } = await supabase.from('claims').upsert({
+      item_id: itemId,
+      claimed_by: userId,
+      list_owner_id: listOwnerId,
+      list_id: listId,
     });
+    if (error) {
+      CrashLogger.error(error, 'ClaimService.claimItem');
+      throw error;
+    }
   },
 
   async unclaimItem(itemId: string) {
-    await db.collection('claims').doc(itemId).delete();
-  }
+    const { error } = await supabase.from('claims').delete().eq('item_id', itemId);
+    if (error) {
+      CrashLogger.error(error, 'ClaimService.unclaimItem');
+      throw error;
+    }
+  },
 };

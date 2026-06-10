@@ -8,6 +8,8 @@ module.exports = function(api) {
       isTest ? 'babel-preset-expo' : ['babel-preset-expo', { jsxImportSource: 'nativewind' }],
       ...(isTest ? [] : ['nativewind/babel']),
     ],
-    plugins: ['react-native-reanimated/plugin'], // MUST be last
+    // reanimated's babel plugin is only needed for the app build, not for
+    // jest unit tests (and pulling it in during tests requires the native pkg).
+    plugins: isTest ? [] : ['react-native-reanimated/plugin'], // MUST be last
   };
 };

@@ -1,130 +1,79 @@
 import { ListService } from './ListService';
-import { runTransaction, doc, serverTimestamp } from 'firebase/firestore';
 
-// Mock the firestore functions
-jest.mock('firebase/firestore', () => ({
-  runTransaction: jest.fn(),
-  doc: jest.fn(() => 'MOCKED_DOC_REF'),
-  serverTimestamp: jest.fn(() => 'MOCKED_TIMESTAMP'),
-  collection: jest.fn(),
-  query: jest.fn(),
-  where: jest.fn(),
-  getDocs: jest.fn(),
-  addDoc: jest.fn(),
-  deleteDoc: jest.fn()
+// The supabase client is mapped to __mocks__/supabaseMock.js via jest config.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const supabaseMock = require('@supabase/supabase-js');
+const { supabase, __setResult, __reset } = supabaseMock;
+
+jest.mock('./LoggingService', () => ({
+  CrashLogger: { error: jest.fn() },
+  AppLogger: { info: jest.fn() },
 }));
-
-// Mock the initialized Firebase DB instance
-jest.mock('../api/firebase', () => ({
-  db: {} // mock db object
-}));
-
-// Suppress console.warn during collision tests so the test output is clean
-const originalWarn = console.warn;
-beforeAll(() => {
-  console.warn = jest.fn();
-});
-
-afterAll(() => {
-  console.warn = originalWarn;
-});
 
 describe('ListService.createList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __reset();
   });
 
-  it('should successfully create a list when code is unique', async () => {
-    const mockTransactionGet = jest.fn().mockResolvedValue({
-      exists: () => false // code doesn't exist, unique!
+  it('delegates to the create-list Edge Function and returns its result', async () => {
+    __setResult({ data: { listId: 'list_1', shareCode: 'ABC1234' }, error: null });
+
+    const result = await ListService.createList('user123', '  My New List  ', true);
+
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('create-list', {
+      body: { title: 'My New List', isSharable: true },
     });
-    const mockTransactionSet = jest.fn();
-
-    const mockTransaction = {
-      get: mockTransactionGet,
-      set: mockTransactionSet
-    };
-
-    // @ts-ignore
-    runTransaction.mockImplementation(async (db, updateFunction) => {
-      return updateFunction(mockTransaction);
-    });
-
-    const result = await ListService.createList('user123', 'My New List');
-
-    // We expect the result.shareCode to be a 7 character string
-    expect(typeof result.shareCode).toBe('string');
-    expect(result.shareCode!.length).toBe(7);
-
-    // Verify transaction.get was called to check uniqueness inside runTransaction
-    expect(mockTransactionGet).toHaveBeenCalled();
-    
-    // Verify transaction.set was called with correct data
-    expect(mockTransactionSet).toHaveBeenCalledWith(
-      'MOCKED_DOC_REF',
-      expect.objectContaining({
-        title: 'My New List',
-        ownerId: 'user123',
-        shareCode: result,
-        allowedUsers: [],
-        createdAt: 'MOCKED_TIMESTAMP',
-        isPrivate: false
-      })
-    );
+    expect(result).toEqual({ listId: 'list_1', shareCode: 'ABC1234' });
   });
 
-  it('should retry when a collision is detected', async () => {
-    // First call says it exists (collision), second call says it doesn't (unique)
-    const mockTransactionGet = jest.fn()
-      .mockResolvedValueOnce({ exists: () => true })
-      .mockResolvedValueOnce({ exists: () => false });
-      
-    const mockTransactionSet = jest.fn();
+  it('normalizes a missing shareCode to null', async () => {
+    __setResult({ data: { listId: 'list_2', shareCode: undefined }, error: null });
 
-    const mockTransaction = {
-      get: mockTransactionGet,
-      set: mockTransactionSet
-    };
+    const result = await ListService.createList('user123', 'Private List', false);
 
-    // @ts-ignore
-    runTransaction.mockImplementation(async (db, updateFunction) => {
-      // The update function will either throw or succeed
-      return updateFunction(mockTransaction);
-    });
-
-    const result = await ListService.createList('user123', 'My Retried List');
-
-    // Verify it retried using the while loop (transaction ran twice)
-    expect(mockTransactionGet).toHaveBeenCalledTimes(2);
-    
-    // Verify it succeeded on the second try
-    expect(mockTransactionSet).toHaveBeenCalledTimes(1);
-    expect(typeof result).toBe('string');
+    expect(result).toEqual({ listId: 'list_2', shareCode: null });
   });
 
-  it('should throw an error after max attempts (5) are reached', async () => {
-    // Always exists! (always collision)
-    const mockTransactionGet = jest.fn().mockResolvedValue({ exists: () => true });
-    const mockTransactionSet = jest.fn();
+  it('throws when the Edge Function returns an error', async () => {
+    __setResult({ data: null, error: new Error('boom') });
 
-    const mockTransaction = {
-      get: mockTransactionGet,
-      set: mockTransactionSet
-    };
+    await expect(ListService.createList('user123', 'Bad List')).rejects.toThrow('boom');
+  });
+});
 
-    // @ts-ignore
-    runTransaction.mockImplementation(async (db, updateFunction) => {
-      return updateFunction(mockTransaction);
+describe('ListService.getOwnedLists', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __reset();
+  });
+
+  it('maps snake_case rows into camelCase GiftList models', async () => {
+    __setResult({
+      data: [
+        {
+          id: 'l1',
+          owner_id: 'user123',
+          title: 'Birthday',
+          is_private: false,
+          share_code: 'XYZ9876',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: null,
+        },
+      ],
+      error: null,
     });
 
-    await expect(ListService.createList('user123', 'My Failed List'))
-      .rejects
-      .toThrow("Failed to generate a unique list code after multiple attempts.");
+    const lists = await ListService.getOwnedLists('user123');
 
-    // Max attempts is 5
-    expect(mockTransactionGet).toHaveBeenCalledTimes(5);
-    
-    // Since all 5 attempts failed, set was never called
-    expect(mockTransactionSet).not.toHaveBeenCalled();
+    expect(supabase.from).toHaveBeenCalledWith('lists');
+    expect(lists).toHaveLength(1);
+    expect(lists[0]).toMatchObject({
+      id: 'l1',
+      ownerId: 'user123',
+      title: 'Birthday',
+      isPrivate: false,
+      shareCode: 'XYZ9876',
+    });
   });
 });

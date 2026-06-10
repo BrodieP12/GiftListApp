@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "@google/genai": "npm:@google/genai@1",
+    "cheerio": "npm:cheerio@1",
+    "nanoid": "npm:nanoid@5",
+    "djwt": "https://deno.land/x/djwt@v3.0.2/mod.ts"
+  }
+}

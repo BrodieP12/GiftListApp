@@ -12,12 +12,22 @@ describe('useListDetail Hook', () => {
         jest.clearAllMocks();
     });
 
-    it('should fetch list items successfully', async () => {
-        (ListService.getItems as jest.Mock).mockResolvedValue([{ id: 'item1', name: 'Toy' }]);
-        (ClaimService.getClaimsForList as jest.Mock).mockResolvedValue({ 'item1': { claimedBy: 'user123' } });
+    it('subscribes to items and claims and merges claim status', async () => {
+        // Drive the realtime listener callbacks the hook subscribes to.
+        (ListService.listenToItems as jest.Mock).mockImplementation((_listId, onUpdate) => {
+            onUpdate([{ id: 'item1', name: 'Toy' }]);
+            return () => {};
+        });
+        (ClaimService.listenToClaimsForList as jest.Mock).mockImplementation(
+            (_ownerId, _listId, onUpdate) => {
+                onUpdate({ item1: { claimedBy: 'user123' } });
+                return () => {};
+            }
+        );
 
         let hookResult: any;
         const TestComponent = () => {
+            // isOwner=false so the claims listener is active.
             hookResult = useListDetail('owner123', 'list456', false, 'user123');
             return null;
         };
@@ -25,18 +35,28 @@ describe('useListDetail Hook', () => {
         await act(async () => {
             create(<TestComponent />);
         });
-        
-        await act(async () => {
-            await hookResult.fetchListData();
-        });
 
-        expect(ListService.getItems).toHaveBeenCalledWith('list456');
-        expect(ClaimService.getClaimsForList).toHaveBeenCalledWith('owner123', 'list456');
-        expect(hookResult.items).toEqual([{ id: 'item1', name: 'Toy', claimStatus: { claimedBy: 'user123' } }]);
+        expect(ListService.listenToItems).toHaveBeenCalledWith(
+            'list456',
+            expect.any(Function),
+            expect.any(Function)
+        );
+        expect(ClaimService.listenToClaimsForList).toHaveBeenCalledWith(
+            'owner123',
+            'list456',
+            expect.any(Function),
+            expect.any(Function)
+        );
+        expect(hookResult.items).toEqual([
+            { id: 'item1', name: 'Toy', claimStatus: { claimedBy: 'user123' } },
+        ]);
         expect(hookResult.loading).toBe(false);
     });
 
-    it('should correctly handle toggling claim', async () => {
+    it('unclaims an item the current user already claimed', async () => {
+        (ListService.listenToItems as jest.Mock).mockReturnValue(() => {});
+        (ClaimService.listenToClaimsForList as jest.Mock).mockReturnValue(() => {});
+
         let hookResult: any;
         const TestComponent = () => {
             hookResult = useListDetail('owner123', 'list456', false, 'user123');
@@ -48,6 +68,7 @@ describe('useListDetail Hook', () => {
         });
 
         await act(async () => {
+            // currentClaimer === currentUserId => unclaim.
             await hookResult.handleToggleClaim('item1', 'user123');
         });
 

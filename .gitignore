@@ -31,7 +31,16 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+migration/.env
+
+# supabase local artifacts
+supabase/.branches
+supabase/.temp
+migration/extracted_data.json
+migration/transformed_data.json
+migration/serviceAccountKey.json
 
 # typescript
 *.tsbuildinfo
@@ -41,3 +50,5 @@ yarn-error.*
 /android
 
 public/latest.apk
+
+serviceAccountKey.json

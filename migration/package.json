@@ -1,0 +1,27 @@
+{
+  "name": "migration",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "extract": "tsx extract_firestore.ts",
+    "transform": "tsx transform.ts",
+    "load": "tsx load.ts",
+    "migrate": "npm run extract && npm run transform && npm run load",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Firestore -> Supabase ETL (extract, transform, load)",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "dotenv": "^17.4.2",
+    "firebase-admin": "^13.8.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}

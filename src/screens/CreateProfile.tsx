@@ -19,7 +19,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 // Services
 import { AuthService } from '../services/AuthService';
 import { UserService, createDefaultUser } from '../services/UserService';
-import { auth } from '../api/firebase';
+import { supabase } from '../api/supabase';
 import { useAppTheme } from '../theme/ThemeContext';
 import {CrashLogger} from "../services/LoggingService";
 
@@ -155,10 +155,11 @@ export const CreateProfile = ({ navigation }: any) => {
 
       // 4. Registration
       await AuthService.register(email, password);
-      const userRecord = auth.currentUser;
+      const { data: authData } = await supabase.auth.getUser();
+      const userRecord = authData.user;
       if (!userRecord) throw new Error("Auth succeeded but user is null.");
 
-      const newUser = createDefaultUser(userRecord.uid, email);
+      const newUser = createDefaultUser(userRecord.id, email);
       newUser.displayName = displayName;
       newUser.givenName = givenName;
       newUser.familyName = familyName;

@@ -12,12 +12,14 @@ import { AddItemScreen } from '../screens/AddItemScreen';
 import { UserProfileScreen } from '../screens/UserProfileScreen';
 import { ListEditScreen } from '../screens/ListEditScreen';
 import { CreateProfile } from '../screens/CreateProfile';
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 
 import ProfileImage from '../components/common/ProfileImage'
 
 export type AuthStackParamList = {
   Login: undefined;
   CreateProfile: undefined;
+  ForgotPassword: undefined;
 };
 
 export type AppStackParamList = {
@@ -38,13 +40,21 @@ const AuthNavigator = () => (
       component={LoginScreen} 
       options={{ headerShown: false }} 
     />
-    <AuthStack.Screen 
-      name="CreateProfile" 
-      component={CreateProfile} 
-      options={{ 
+    <AuthStack.Screen
+      name="CreateProfile"
+      component={CreateProfile}
+      options={{
         title: 'Create Profile',
         headerTintColor: '#007AFF', // Match the primary color
-      }} 
+      }}
+    />
+    <AuthStack.Screen
+      name="ForgotPassword"
+      component={ForgotPasswordScreen}
+      options={{
+        title: 'Reset Password',
+        headerTintColor: '#007AFF',
+      }}
     />
   </AuthStack.Navigator>
 );
