@@ -11,6 +11,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { AppStackParamList } from '../navigation/AppNavigator';
 import { Button } from '../components/common/Button';
 import { CreateListModal } from '../components/modals/CreateList';
+import { JoinListModal } from '../components/modals/JoinListModal';
 import { ShareCodeModal } from '../components/modals/ShareCodeModal';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftListRow } from '../components/lists/GiftListRow';
@@ -19,30 +20,44 @@ import {CrashLogger} from "../services/LoggingService";
 
 type DashboardNavProp = StackNavigationProp<AppStackParamList, 'Dashboard'>;
 
+// Row model for the combined (sectioned) list rendered in a single FlatList.
+type Row =
+    | { kind: 'section'; key: string; title: string }
+    | { kind: 'owned'; key: string; list: GiftList }
+    | { kind: 'shared'; key: string; list: GiftList }
+    | { kind: 'empty'; key: string; text: string }
+    | { kind: 'loading'; key: string };
+
 export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }) => {
     const { user, logout } = useAuth();
-    
-    // Extracted List Management logic
-    const { lists, loading, createList, deleteList, fetchLists } = useLists(user?.uid);
-    // Theming logic
+
+    // Owned + shared list management.
+    const {
+        lists, sharedLists, loading, sharedLoading,
+        createList, deleteList, joinList, leaveList,
+    } = useLists(user?.uid);
     const { colors } = useAppTheme();
 
-    // Modal state
+    // Create modal state
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [createLoading, setCreateLoading] = useState(false);
     const [shareCodeModalVisible, setShareCodeModalVisible] = useState(false);
     const [pendingShareCode, setPendingShareCode] = useState('');
 
-    // Delete state
-    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+    // Join modal state
+    const [joinModalVisible, setJoinModalVisible] = useState(false);
+    const [joinLoading, setJoinLoading] = useState(false);
+
+    // Confirm (delete owned / leave shared) state
     const [confirmVisible, setConfirmVisible] = useState(false);
+    const [confirmMode, setConfirmMode] = useState<'delete' | 'leave'>('delete');
+    const [targetId, setTargetId] = useState<string | null>(null);
 
     const handleCreateList = async (name: string, isSharable: boolean) => {
         setCreateLoading(true);
         try {
             const result = await createList(name, isSharable);
             setCreateModalVisible(false);
-            fetchLists();
 
             // Notify user of their share code immediately
             if (result.shareCode) {
@@ -58,35 +73,94 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
         }
     };
 
-    const handleDeletePress = (id: string) => {
-        setDeleteTargetId(id);
-        setConfirmVisible(true);
-    };
-
-    const handleConfirmDelete = async () => {
-        if (!deleteTargetId) return;
+    const handleJoinList = async (shareCode: string) => {
+        setJoinLoading(true);
         try {
-            await deleteList(deleteTargetId);
-            fetchLists();
+            await joinList(shareCode);
+            setJoinModalVisible(false);
+            Alert.alert('Joined!', 'The list now appears under "Shared with me".');
         } catch (error) {
-            CrashLogger.error(error);
-            Alert.alert('Error', 'Failed to delete list');
+            const err = error as Error;
+            CrashLogger.error(err);
+            Alert.alert('Could not join', err.message || 'Please check the code and try again.');
         } finally {
-            setConfirmVisible(false);
-            setDeleteTargetId(null);
+            setJoinLoading(false);
         }
     };
 
-    const renderItem = ({ item }: { item: GiftList }) => (
-        <GiftListRow
-            list={item}
-            onPress={() => navigation.navigate('ListDetail', {
-                listId: item.id,
-                ownerId: item.ownerId
-            })}
-            onDelete={handleDeletePress}
-        />
-    );
+    const handleDeletePress = (id: string) => {
+        setConfirmMode('delete');
+        setTargetId(id);
+        setConfirmVisible(true);
+    };
+
+    const handleLeavePress = (id: string) => {
+        setConfirmMode('leave');
+        setTargetId(id);
+        setConfirmVisible(true);
+    };
+
+    const handleConfirm = async () => {
+        if (!targetId) return;
+        try {
+            if (confirmMode === 'delete') {
+                await deleteList(targetId);
+            } else {
+                await leaveList(targetId);
+            }
+        } catch (error) {
+            CrashLogger.error(error);
+            Alert.alert('Error', confirmMode === 'delete' ? 'Failed to delete list' : 'Failed to leave list');
+        } finally {
+            setConfirmVisible(false);
+            setTargetId(null);
+        }
+    };
+
+    // Build the combined, sectioned data for the FlatList.
+    const data: Row[] = [];
+    data.push({ kind: 'section', key: 'sec-owned', title: 'My Lists' });
+    if (lists.length === 0) {
+        data.push({ kind: 'empty', key: 'empty-owned', text: 'No lists yet. Tap + to create one!' });
+    } else {
+        lists.forEach((l) => data.push({ kind: 'owned', key: `o-${l.id}`, list: l }));
+    }
+    data.push({ kind: 'section', key: 'sec-shared', title: 'Shared with me' });
+    if (sharedLoading) {
+        data.push({ kind: 'loading', key: 'loading-shared' });
+    } else if (sharedLists.length === 0) {
+        data.push({ kind: 'empty', key: 'empty-shared', text: 'No shared lists yet. Tap the link button to join one!' });
+    } else {
+        sharedLists.forEach((l) => data.push({ kind: 'shared', key: `s-${l.id}`, list: l }));
+    }
+
+    const renderItem = ({ item }: { item: Row }) => {
+        switch (item.kind) {
+            case 'section':
+                return <Text style={[styles.sectionTitle, { color: colors.text }]}>{item.title}</Text>;
+            case 'empty':
+                return <Text style={[styles.empty, { color: colors.textDim }]}>{item.text}</Text>;
+            case 'loading':
+                return <ActivityIndicator style={{ marginVertical: 16 }} color={colors.primary} />;
+            case 'owned':
+                return (
+                    <GiftListRow
+                        list={item.list}
+                        onPress={() => navigation.navigate('ListDetail', { listId: item.list.id, ownerId: item.list.ownerId })}
+                        onDelete={handleDeletePress}
+                    />
+                );
+            case 'shared':
+                return (
+                    <GiftListRow
+                        list={item.list}
+                        actionIcon="sign-out-alt"
+                        onPress={() => navigation.navigate('ListDetail', { listId: item.list.id, ownerId: item.list.ownerId })}
+                        onDelete={handleLeavePress}
+                    />
+                );
+        }
+    };
 
     const renderListHeader = () => (
         <View style={styles.headerContainer}>
@@ -96,7 +170,6 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
                 </Text>
                 <Button title="Logout" variant="danger" onPress={logout} />
             </View>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>My Lists</Text>
         </View>
     );
 
@@ -112,21 +185,24 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
                 <>
                     <FlatList
                         ref={flatListRef}
-                        data={lists}
-                        keyExtractor={(item) => item.id}
+                        data={data}
+                        keyExtractor={(item) => item.key}
                         renderItem={renderItem}
                         ListHeaderComponent={renderListHeader}
                         style={styles.list}
                         contentContainerStyle={styles.listContent}
                         alwaysBounceVertical={true}
-                        ListEmptyComponent={
-                            <Text style={[styles.empty, { color: colors.textDim }]}>
-                                No lists yet. Tap + to create one!
-                            </Text>
-                        }
                     />
 
-                    {/* Enhanced FAB with theme colors */}
+                    {/* Join a shared list (secondary FAB) */}
+                    <TouchableOpacity
+                        style={[styles.fabSecondary, { backgroundColor: colors.card, borderColor: colors.primary }]}
+                        onPress={() => setJoinModalVisible(true)}
+                    >
+                        <FontAwesome5 name="link" size={20} color={colors.primary} />
+                    </TouchableOpacity>
+
+                    {/* Create a list (primary FAB) */}
                     <TouchableOpacity
                         style={[styles.fab, { backgroundColor: colors.primary }]}
                         onPress={() => setCreateModalVisible(true)}
@@ -143,6 +219,13 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
                 loading={createLoading}
             />
 
+            <JoinListModal
+                visible={joinModalVisible}
+                onClose={() => setJoinModalVisible(false)}
+                onJoin={handleJoinList}
+                loading={joinLoading}
+            />
+
             <ShareCodeModal
                 visible={shareCodeModalVisible}
                 shareCode={pendingShareCode}
@@ -151,9 +234,13 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
 
             <ConfirmationModal
                 visible={confirmVisible}
-                title="Delete List"
-                message="Are you sure you want to delete this list? This action cannot be undone."
-                onConfirm={handleConfirmDelete}
+                title={confirmMode === 'delete' ? 'Delete List' : 'Leave List'}
+                message={
+                    confirmMode === 'delete'
+                        ? 'Are you sure you want to delete this list? This action cannot be undone.'
+                        : 'Are you sure you want to leave this shared list? You can rejoin with the share code.'
+                }
+                onConfirm={handleConfirm}
                 onCancel={() => setConfirmVisible(false)}
             />
         </View>
@@ -166,10 +253,10 @@ const styles = StyleSheet.create({
     list: { flex: 1 },
     listContent: { padding: 20, paddingBottom: 100 },
     headerContainer: { marginBottom: 15 },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
     welcome: { fontSize: 16, fontWeight: 'bold' },
-    sectionTitle: { fontSize: 22, fontWeight: '800' },
-    empty: { textAlign: 'center', marginTop: 40 },
+    sectionTitle: { fontSize: 22, fontWeight: '800', marginTop: 10, marginBottom: 12 },
+    empty: { textAlign: 'center', marginTop: 10, marginBottom: 10 },
     fab: {
         position: 'absolute',
         bottom: 30,
@@ -180,6 +267,22 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 6,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 3 },
+    },
+    fabSecondary: {
+        position: 'absolute',
+        bottom: 98,
+        right: 28,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        borderWidth: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
         shadowColor: '#000',
         shadowOpacity: 0.2,
         shadowRadius: 6,

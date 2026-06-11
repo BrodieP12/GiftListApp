@@ -132,16 +132,62 @@ export const ListService = {
     return (data ?? []).map(listFromRow);
   },
 
+  /**
+   * Subscribes to the lists shared with the user (lists they've joined).
+   * Re-fetches whenever the user's membership rows change. Returns an
+   * unsubscribe function, matching listenToOwnedLists.
+   */
+  listenToSharedLists(
+    userId: string,
+    onUpdate: (lists: GiftList[]) => void,
+    onError: (err: Error) => void
+  ) {
+    const refetch = () => this.getSharedLists(userId).then(onUpdate).catch(onError);
+
+    refetch(); // prime with current state
+
+    const channel = supabase
+      .channel(`shared:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'list_members', filter: `user_id=eq.${userId}` },
+        refetch
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
   /** Joins a shared list by its share code. Returns the joined list id. */
   async joinListByCode(shareCode: string): Promise<string> {
-    const { data, error } = await supabase.rpc('join_list_by_code', {
-      p_code: shareCode.trim(),
-    });
+    const code = shareCode.trim().toUpperCase();
+    if (!code) throw new Error('Please enter a share code.');
+
+    const { data, error } = await supabase.rpc('join_list_by_code', { p_code: code });
     if (error) {
       CrashLogger.error(error, 'ListService.joinListByCode');
-      throw error;
+      // Surface a friendly message for the most common case (bad code).
+      if (error.message?.includes('invalid_code')) {
+        throw new Error('That share code does not match any list.');
+      }
+      throw new Error('Could not join that list. Please check the code and try again.');
     }
     return data as string;
+  },
+
+  /** Removes the current user from a shared list (leave). Owners use deleteList. */
+  async leaveList(listId: string, userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('list_members')
+      .delete()
+      .eq('list_id', listId)
+      .eq('user_id', userId);
+    if (error) {
+      CrashLogger.error(error, 'ListService.leaveList');
+      throw error;
+    }
   },
 
   async deleteList(listId: string) {

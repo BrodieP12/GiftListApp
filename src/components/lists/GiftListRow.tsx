@@ -26,6 +26,9 @@ interface GiftListRowProps {
   titleStyle?: StyleProp<TextStyle>;
   subTitleStyle?: StyleProp<TextStyle>;
   revealWidth?: number;
+  // Icon shown for the swipe action. Defaults to 'trash' (delete); shared
+  // lists pass 'sign-out-alt' to represent "leave".
+  actionIcon?: string;
 }
 
 export const GiftListRow = ({
@@ -38,6 +41,7 @@ export const GiftListRow = ({
                               titleStyle,
                               subTitleStyle,
                               revealWidth = 100,
+                              actionIcon = 'trash',
                             }: GiftListRowProps) => {
   const { user } = useAuth();
   const { colors } = useAppTheme();
@@ -63,7 +67,7 @@ export const GiftListRow = ({
               onPress={() => onDelete(list.id)}
           >
             <Animated.View style={{ transform: [{ scale }] }}>
-              <FontAwesome5 name="trash" size={24} color="#fff" />
+              <FontAwesome5 name={actionIcon} size={24} color="#fff" />
             </Animated.View>
           </TouchableOpacity>
         </View>
