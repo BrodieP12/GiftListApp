@@ -1,0 +1,11 @@
+import 'react-native-gesture-handler';
+import analytics from '@react-native-firebase/analytics';
+import './global.css';
+import React, { useEffect } from 'react';
+import { Alert, Linking } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as Updates from 'expo-updates';
+import * as Application from 'expo-application';
+import remoteConfig from '@react-native-firebase/remote-config';
+import AsyncStorage from '@react-native-async-storage/async-storage';

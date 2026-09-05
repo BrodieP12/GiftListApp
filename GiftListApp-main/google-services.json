@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "616461662273",
+    "firebase_url": "https://giftlistapp-557ce-default-rtdb.firebaseio.com",
+    "project_id": "giftlistapp-557ce",
+    "storage_bucket": "giftlistapp-557ce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:616461662273:android:126d56c6e65728885c6ec0",
+        "android_client_info": {
+          "package_name": "com.brodiepasker.giftlistapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "616461662273-b0o0va6clok90g6sqirn4tr6mmfmj6lb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBz1pENl8Gw14qM6wDTBnCSdts39TeTsG8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "616461662273-b0o0va6clok90g6sqirn4tr6mmfmj6lb.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "616461662273-i6puq30novomvjog5558evcg52cdcsif.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.brodiepasker.giftlistapp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
