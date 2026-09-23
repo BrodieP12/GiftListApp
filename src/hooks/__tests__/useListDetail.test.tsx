@@ -8,49 +8,94 @@ jest.mock('../../services/ListService');
 jest.mock('../../services/ClaimService');
 
 describe('useListDetail Hook', () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
+  let itemsCallback: ((items: any[]) => void) | null = null;
+  let claimsCallback: ((claims: Record<string, any>) => void) | null = null;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    itemsCallback = null;
+    claimsCallback = null;
+
+    (ListService.listenToItems as jest.Mock).mockImplementation(
+      (_listId: string, onUpdate: (items: any[]) => void) => {
+        itemsCallback = onUpdate;
+        return () => {};
+      }
+    );
+
+    (ClaimService.listenToClaimsForList as jest.Mock).mockImplementation(
+      (_listId: string, onUpdate: (claims: Record<string, any>) => void) => {
+        claimsCallback = onUpdate;
+        return () => {};
+      }
+    );
+
+    (ClaimService.unclaimItem as jest.Mock).mockResolvedValue(undefined);
+    (ClaimService.claimItem as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  it('merges items and claims for a non-owner', async () => {
+    let hookResult: any;
+    const TestComponent = () => {
+      hookResult = useListDetail('owner123', 'list456', false, 'user123');
+      return null;
+    };
+
+    await act(async () => { create(<TestComponent />); });
+
+    await act(async () => {
+      itemsCallback?.([{ id: 'item1', name: 'Toy' }]);
+      claimsCallback?.({ item1: { claimedBy: 'user123' } });
     });
 
-    it('should fetch list items successfully', async () => {
-        (ListService.getItems as jest.Mock).mockResolvedValue([{ id: 'item1', name: 'Toy' }]);
-        (ClaimService.getClaimsForList as jest.Mock).mockResolvedValue({ 'item1': { claimedBy: 'user123' } });
+    expect(hookResult.items).toEqual([
+      { id: 'item1', name: 'Toy', claimStatus: { claimedBy: 'user123' } },
+    ]);
+    expect(hookResult.loading).toBe(false);
+  });
 
-        let hookResult: any;
-        const TestComponent = () => {
-            hookResult = useListDetail('owner123', 'list456', false, 'user123');
-            return null;
-        };
+  it('does not subscribe to claims for the owner', async () => {
+    const TestComponent = () => {
+      useListDetail('owner123', 'list456', true, 'owner123');
+      return null;
+    };
 
-        await act(async () => {
-            create(<TestComponent />);
-        });
-        
-        await act(async () => {
-            await hookResult.fetchListData();
-        });
+    await act(async () => { create(<TestComponent />); });
 
-        expect(ListService.getItems).toHaveBeenCalledWith('list456');
-        expect(ClaimService.getClaimsForList).toHaveBeenCalledWith('owner123', 'list456');
-        expect(hookResult.items).toEqual([{ id: 'item1', name: 'Toy', claimStatus: { claimedBy: 'user123' } }]);
-        expect(hookResult.loading).toBe(false);
+    expect(ClaimService.listenToClaimsForList).not.toHaveBeenCalled();
+  });
+
+  it('unclaims an item the current user claimed', async () => {
+    let hookResult: any;
+    const TestComponent = () => {
+      hookResult = useListDetail('owner123', 'list456', false, 'user123');
+      return null;
+    };
+
+    await act(async () => { create(<TestComponent />); });
+
+    await act(async () => {
+      await hookResult.handleToggleClaim('item1', 'user123');
     });
 
-    it('should correctly handle toggling claim', async () => {
-        let hookResult: any;
-        const TestComponent = () => {
-            hookResult = useListDetail('owner123', 'list456', false, 'user123');
-            return null;
-        };
+    expect(ClaimService.unclaimItem).toHaveBeenCalledWith('item1');
+    expect(ClaimService.claimItem).not.toHaveBeenCalled();
+  });
 
-        await act(async () => {
-            create(<TestComponent />);
-        });
+  it('claims a free item', async () => {
+    let hookResult: any;
+    const TestComponent = () => {
+      hookResult = useListDetail('owner123', 'list456', false, 'user123');
+      return null;
+    };
 
-        await act(async () => {
-            await hookResult.handleToggleClaim('item1', 'user123');
-        });
+    await act(async () => { create(<TestComponent />); });
 
-        expect(ClaimService.unclaimItem).toHaveBeenCalledWith('item1');
+    await act(async () => {
+      await hookResult.handleToggleClaim('item1', null);
     });
+
+    expect(ClaimService.claimItem).toHaveBeenCalledWith('item1', 'user123', 'owner123');
+    expect(ClaimService.unclaimItem).not.toHaveBeenCalled();
+  });
 });

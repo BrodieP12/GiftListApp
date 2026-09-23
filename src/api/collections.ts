@@ -1,26 +1,14 @@
-import { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
-import { db } from './firebase';
-import { GiftList, GiftItem, ItemClaim, User } from '../types/models';
-
 /**
- * Type-Safe Collection References
- * These helpers ensure that all Firestore operations are strongly typed.
+ * collections.ts
+ *
+ * Legacy module — this file previously defined Firestore collection name
+ * constants/references used by the Firebase data layer. Now that the app's
+ * backend has migrated to Supabase (Postgres), there are no Firestore
+ * collections to reference, so this file is an intentionally empty stub
+ * kept only so any stale imports of it don't break the build. All data
+ * access now goes through `src/api/supabase.ts` (the Supabase client) and
+ * the per-domain services in `src/services/*.ts`.
  */
-
-// 1. Root Collections
-export const listsRef = db.collection('lists') as FirebaseFirestoreTypes.CollectionReference<GiftList>;
-export const claimsRef = db.collection('claims') as FirebaseFirestoreTypes.CollectionReference<ItemClaim>;
-export const usersRef = db.collection('users') as FirebaseFirestoreTypes.CollectionReference<User>;
-
-// 2. Sub-Collections (Function required because the path is dynamic)
-export const getItemsRef = (listId: string) => {
-  return db.collection(`lists/${listId}/items`) as FirebaseFirestoreTypes.CollectionReference<GiftItem>;
-};
-
-// 3. Grouping for easier imports (Optional)
-export const collections = {
-  lists: listsRef,
-  claims: claimsRef,
-  users: usersRef,
-  items: getItemsRef,
-};
+// Firestore collections removed — data layer migrated to Supabase.
+// See src/api/supabase.ts and src/services/*.ts for all data access.
+export {};
