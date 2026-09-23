@@ -1,130 +1,100 @@
 import { ListService } from './ListService';
-import { runTransaction, doc, serverTimestamp } from 'firebase/firestore';
 
-// Mock the firestore functions
-jest.mock('firebase/firestore', () => ({
-  runTransaction: jest.fn(),
-  doc: jest.fn(() => 'MOCKED_DOC_REF'),
-  serverTimestamp: jest.fn(() => 'MOCKED_TIMESTAMP'),
-  collection: jest.fn(),
-  query: jest.fn(),
-  where: jest.fn(),
-  getDocs: jest.fn(),
-  addDoc: jest.fn(),
-  deleteDoc: jest.fn()
+jest.mock('../api/supabase', () => ({
+  supabase: {
+    from: jest.fn(),
+    channel: jest.fn(() => ({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn().mockReturnThis(),
+    })),
+    removeChannel: jest.fn(),
+    rpc: jest.fn(),
+  },
 }));
 
-// Mock the initialized Firebase DB instance
-jest.mock('../api/firebase', () => ({
-  db: {} // mock db object
-}));
+import { supabase } from '../api/supabase';
 
-// Suppress console.warn during collision tests so the test output is clean
-const originalWarn = console.warn;
-beforeAll(() => {
-  console.warn = jest.fn();
-});
+const mockFrom = supabase.from as jest.Mock;
 
-afterAll(() => {
-  console.warn = originalWarn;
-});
+function chainedBuilder(overrides: Record<string, jest.Mock> = {}) {
+  const builder: Record<string, jest.Mock> = {};
+  const methods = ['insert', 'upsert', 'update', 'delete', 'select', 'eq', 'neq', 'order', 'maybeSingle', 'single', 'in'];
+  methods.forEach(m => {
+    builder[m] = overrides[m] ?? jest.fn(() => builder);
+  });
+  return builder;
+}
 
 describe('ListService.createList', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it('returns a listId and null shareCode for private list', async () => {
+    const builder = chainedBuilder({
+      single: jest.fn().mockResolvedValue({ data: { id: 'list-abc' }, error: null }),
+    });
+    mockFrom.mockReturnValue(builder);
+    // upsert for list_members
+    mockFrom.mockReturnValueOnce(builder).mockReturnValue({
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    });
+
+    const result = await ListService.createList('user1', 'My List', false);
+    expect(result.shareCode).toBeNull();
   });
 
-  it('should successfully create a list when code is unique', async () => {
-    const mockTransactionGet = jest.fn().mockResolvedValue({
-      exists: () => false // code doesn't exist, unique!
+  it('returns a 7-character shareCode for a sharable list', async () => {
+    const builder = chainedBuilder({
+      single: jest.fn().mockResolvedValue({ data: { id: 'list-xyz' }, error: null }),
     });
-    const mockTransactionSet = jest.fn();
+    mockFrom
+      .mockReturnValueOnce(builder)
+      .mockReturnValue({ upsert: jest.fn().mockResolvedValue({ error: null }) });
 
-    const mockTransaction = {
-      get: mockTransactionGet,
-      set: mockTransactionSet
-    };
-
-    // @ts-ignore
-    runTransaction.mockImplementation(async (db, updateFunction) => {
-      return updateFunction(mockTransaction);
-    });
-
-    const result = await ListService.createList('user123', 'My New List');
-
-    // We expect the result.shareCode to be a 7 character string
+    const result = await ListService.createList('user1', 'Shared List', true);
     expect(typeof result.shareCode).toBe('string');
     expect(result.shareCode!.length).toBe(7);
-
-    // Verify transaction.get was called to check uniqueness inside runTransaction
-    expect(mockTransactionGet).toHaveBeenCalled();
-    
-    // Verify transaction.set was called with correct data
-    expect(mockTransactionSet).toHaveBeenCalledWith(
-      'MOCKED_DOC_REF',
-      expect.objectContaining({
-        title: 'My New List',
-        ownerId: 'user123',
-        shareCode: result,
-        allowedUsers: [],
-        createdAt: 'MOCKED_TIMESTAMP',
-        isPrivate: false
-      })
-    );
   });
 
-  it('should retry when a collision is detected', async () => {
-    // First call says it exists (collision), second call says it doesn't (unique)
-    const mockTransactionGet = jest.fn()
-      .mockResolvedValueOnce({ exists: () => true })
-      .mockResolvedValueOnce({ exists: () => false });
-      
-    const mockTransactionSet = jest.fn();
-
-    const mockTransaction = {
-      get: mockTransactionGet,
-      set: mockTransactionSet
-    };
-
-    // @ts-ignore
-    runTransaction.mockImplementation(async (db, updateFunction) => {
-      // The update function will either throw or succeed
-      return updateFunction(mockTransaction);
+  it('throws if supabase insert fails', async () => {
+    const builder = chainedBuilder({
+      single: jest.fn().mockResolvedValue({ data: null, error: { message: 'DB error' } }),
     });
+    mockFrom.mockReturnValue(builder);
 
-    const result = await ListService.createList('user123', 'My Retried List');
+    await expect(ListService.createList('user1', 'Bad List')).rejects.toBeTruthy();
+  });
+});
 
-    // Verify it retried using the while loop (transaction ran twice)
-    expect(mockTransactionGet).toHaveBeenCalledTimes(2);
-    
-    // Verify it succeeded on the second try
-    expect(mockTransactionSet).toHaveBeenCalledTimes(1);
-    expect(typeof result).toBe('string');
+describe('ListService.getList', () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it('returns null when list not found', async () => {
+    const builder = chainedBuilder({
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    mockFrom.mockReturnValue(builder);
+
+    const result = await ListService.getList('nonexistent');
+    expect(result).toBeNull();
   });
 
-  it('should throw an error after max attempts (5) are reached', async () => {
-    // Always exists! (always collision)
-    const mockTransactionGet = jest.fn().mockResolvedValue({ exists: () => true });
-    const mockTransactionSet = jest.fn();
-
-    const mockTransaction = {
-      get: mockTransactionGet,
-      set: mockTransactionSet
+  it('maps a row to a GiftList', async () => {
+    const row = {
+      id: 'list1', owner_id: 'owner1', title: 'Test', is_private: false,
+      share_code: 'ABC1234', created_at: '2024-01-01', updated_at: '2024-01-02',
     };
-
-    // @ts-ignore
-    runTransaction.mockImplementation(async (db, updateFunction) => {
-      return updateFunction(mockTransaction);
+    const builder = chainedBuilder({
+      maybeSingle: jest.fn().mockResolvedValue({ data: row, error: null }),
     });
+    mockFrom.mockReturnValue(builder);
 
-    await expect(ListService.createList('user123', 'My Failed List'))
-      .rejects
-      .toThrow("Failed to generate a unique list code after multiple attempts.");
-
-    // Max attempts is 5
-    expect(mockTransactionGet).toHaveBeenCalledTimes(5);
-    
-    // Since all 5 attempts failed, set was never called
-    expect(mockTransactionSet).not.toHaveBeenCalled();
+    const result = await ListService.getList('list1');
+    expect(result).toMatchObject({
+      id: 'list1',
+      ownerId: 'owner1',
+      title: 'Test',
+      isPrivate: false,
+      shareCode: 'ABC1234',
+    });
   });
 });

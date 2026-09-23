@@ -1,8 +1,29 @@
+/**
+ * Confirmation.tsx
+ *
+ * Generic, reusable confirm/cancel modal (an app-styled replacement for
+ * `Alert.alert` with two buttons) used anywhere the app needs the user to
+ * confirm a consequential action — e.g. deleting a list/item, unfriending
+ * someone, or other destructive/important operations. Supports a 'danger'
+ * (red, exclamation icon) or 'info' (theme primary color, info icon)
+ * visual style, and an optional `customContent` slot for embedding extra
+ * UI (like a text input) inside the confirmation body.
+ */
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAppTheme, ThemeColors } from '../../theme/ThemeContext';
 
+/**
+ * Props for {@link ConfirmationModal}.
+ *
+ * - `type` selects the icon and confirm-button color: 'danger' (default)
+ *   for destructive actions, 'info' for non-destructive confirmations.
+ * - `confirmText`/`cancelText` let callers customize button labels (e.g.
+ *   "Delete" instead of the default "Confirm").
+ * - `customContent` is rendered between the message and the buttons, for
+ *   confirmations that need extra input/context beyond plain text.
+ */
 interface ConfirmationModalProps {
     visible: boolean;
     title: string;
@@ -12,21 +33,31 @@ interface ConfirmationModalProps {
     confirmText?: string;
     cancelText?: string;
     type?: 'danger' | 'info';
+    customContent?: React.ReactNode;
 }
 
-export const ConfirmationModal = ({ 
-    visible, 
-    title, 
-    message, 
-    onConfirm, 
+/**
+ * Reusable confirm/cancel dialog. Renders a title, message, optional
+ * `customContent`, and a confirm/cancel button pair whose confirm color and
+ * icon adapt to `type`.
+ */
+export const ConfirmationModal = ({
+    visible,
+    title,
+    message,
+    onConfirm,
     onCancel,
     confirmText = 'Confirm',
     cancelText = 'Cancel',
-    type = 'danger'
+    type = 'danger',
+    customContent,
 }: ConfirmationModalProps) => {
     const { colors } = useAppTheme();
     const styles = createStyles(colors);
 
+    // Icon and confirm-button color are driven entirely by `type`: a
+    // warning triangle in the theme's danger color for destructive
+    // confirmations, or an info icon in the theme's primary color otherwise.
     const iconName = type === 'danger' ? 'exclamation-triangle' : 'info-circle';
     const confirmColor = type === 'danger' ? colors.danger : colors.primary;
 
@@ -44,8 +75,9 @@ export const ConfirmationModal = ({
                         <Text style={styles.title}>{title}</Text>
                     </View>
                     
-                    <Text style={styles.message}>{message}</Text>
-                    
+                    {!!message && <Text style={styles.message}>{message}</Text>}
+                    {customContent}
+
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity 
                             style={[styles.confirmButton, { backgroundColor: confirmColor }]} 

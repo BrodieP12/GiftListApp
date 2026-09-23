@@ -1,3 +1,17 @@
+// SmartAdBanner.tsx
+//
+// NOTE: This entire component is currently disabled (commented out) — the
+// react-native-google-mobile-ads dependency/integration is not wired up in
+// this build. Kept here as reference for the intended behavior:
+//
+// A banner ad component intended to be rendered on screens (e.g. dashboard/
+// list views) that gates ad display behind the signed-in user's premium
+// status. Business rule: premium users (`user?.isPremium`) never see ads —
+// the component renders `null` for them — while everyone else sees a
+// non-personalized Google Mobile Ads banner. Uses Google's official test ad
+// unit ID in development (`__DEV__`) and a placeholder real unit ID
+// otherwise.
+//
 // import React from 'react';
 // import { View, Text, StyleSheet } from 'react-native';
 // import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
