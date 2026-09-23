@@ -28,12 +28,12 @@ Built from `docs/AuditReport.md`, the migration notes, and the 300-item table in
 | B5 | Med | `tsc` errors: `FriendsScreen.tsx:106` navigate typing (`MessagesTab` is not in the param list), `useLists.test.tsx` calls a removed method, and `supabase/functions` is compiled by the app's tsconfig (Deno types). | listed |
 | B6 | Med | Unfiltered or overly broad realtime subscriptions in Claim, Friend and Message services (over-fetching). Channel names use `Date.now()`, so each mount opens a new channel. Verify that unsubscribe reliably runs on unmount. | `*Service.ts` |
 | B7 | Med | Untested flows from the migration notes: list creation and items, claim/unclaim, join by share code, feedback submission. | see Sprint 1 |
-| B8 | Med | `DashboardScreen` uses an index-based `keyExtractor`. `FlatList` is imported from `react-native-gesture-handler` in Dashboard and ListDetail. | `DashboardScreen.tsx:3,169`, `ListDetailScreen.tsx:5` |
+| B8 | Med | `DashboardScreen` uses an index-based `keyExtractor` (`ListDetailScreen` already uses `item.id`). `FlatList` is imported from `react-native-gesture-handler` in Dashboard and ListDetail. | `DashboardScreen.tsx:3,169`, `ListDetailScreen.tsx:5` |
 | B9 | Med | N+1 queries: `MessageService` fetches the last message per conversation, and `ClaimService` does a redundant items lookup. | services |
 | B10 | Low | `searchUsersByEmail` uses `ilike '%q%'` (table scan), and lets users enumerate emails. Prefer exact or prefix match. | `UserService.ts:136` |
 | B11 | Low | `createStyles(colors)` is rebuilt on each render. `GiftItemRow` and `GiftListRow` are not memoized. | components |
 | B12 | Low | Leftover Firebase: `@react-native-firebase/*` still in `package.json`, orphaned `functions/`, `firebase.json`, `google-services.json`, and `gemini.md` describing the wrong backend. | repo root |
-| B13 | Low | `CreateProfile.tsx` is a state-heavy component (`useReducer` or a form library would help). `AddItemScreen` image aspect `[4, 3]` versus square thumbnails. | screens |
+| B13 | Low | `CreateProfile.tsx` is a state-heavy component (`useReducer` or a form library would help). (The `AddItemScreen` image aspect is already `[1, 1]`, so that audit item is done.) | screens |
 
 ### Bug Sprint 1: Make it safe and verifiable
 **Goal:** the test suite is green and the core loop (list → item → claim → join) is verified on-device.
@@ -49,7 +49,7 @@ Built from `docs/AuditReport.md`, the migration notes, and the 300-item table in
 - B6 and B9: tighten realtime filters. Add a `get_conversations_with_last_message` RPC or view. Remove the redundant query in `ClaimService`.
 - B8, B10 and B11: FlatList fixes, memoized rows, and a prefix or exact-match email search.
 - B12: remove unused Firebase packages (keep Crashlytics or Analytics only if still wanted), and delete `firebase.json`, `google-services.json` and the `functions/` remnants. Update `gemini.md` to say the backend is Supabase.
-- B13: `AddItemScreen` aspect ratio. Refactor `CreateProfile` only if time remains.
+- B13: refactor `CreateProfile` state only if time remains.
 - **Done when:** a Dashboard with about 50 lists and a long conversation list scroll smoothly, and `package.json` matches what the code uses.
 
 ---
