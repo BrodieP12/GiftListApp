@@ -62,7 +62,7 @@ Checking the code showed two gaps that many of the 300 features silently depend 
 2. **No `event_date` or `occasion` on `lists`.** About 8 features depend on it (#13, #16, #18, #20, #34, #35, #53, #99). Table row #19 is the one that introduces it.
 
 ### Foundation Sprint (call it F1)
-- Add `event_date` and `occasion` to `lists`, plus a date picker in `ListEditScreen` and a countdown chip in `ListDetailScreen`. This is the core of #19 and #135. Also add an occasion badge (#119).
+- Add `event_date` and `occasion` to `lists`, plus a date picker in `ListEditScreen` and a countdown chip in `ListDetailScreen`. This is the core of #19 (the reminder Edge Function part of #19 lands in Sprint 5 with #37). Also add an occasion badge (#119).
 - Add `push_tokens` and `notifications` tables and an Edge Function `send-push`, using Expo push (simplest with this stack, no Firebase needed). Register tokens on login.
 - Add a `pg_cron` skeleton and one example scheduled job, so later features only add SQL.
 - Add a notification history screen (#131), mark-all-read (#130) and per-list mute (#137). These reuse the new tables, and they give the push work something visible to verify.
