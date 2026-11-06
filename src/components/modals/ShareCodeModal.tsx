@@ -1,3 +1,14 @@
+/**
+ * ShareCodeModal.tsx
+ *
+ * Confirmation modal shown right after a list is created (or whenever the
+ * user wants to view a list's join code again). Displays the short share
+ * code that friends use to find and join this list, and offers a one-tap
+ * "Copy Code" action (via `expo-clipboard`) so the user can paste it into a
+ * message to share. The code itself is generated/persisted elsewhere
+ * (list creation flow / Supabase) — this component only displays and
+ * copies it.
+ */
 import React from 'react';
 import {
   View,
@@ -11,12 +22,20 @@ import * as Clipboard from 'expo-clipboard';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAppTheme, ThemeColors } from '../../theme/ThemeContext';
 
+/** Props for {@link ShareCodeModal}. `shareCode` is the list's join code to
+ * display and copy; `onClose` dismisses the modal (via "Done" or the
+ * native back gesture). */
 interface ShareCodeModalProps {
   visible: boolean;
   shareCode: string;
   onClose: () => void;
 }
 
+/**
+ * Displays a list's share code in a large, easy-to-read format with a copy-
+ * to-clipboard shortcut, so the list owner can hand it off to friends who
+ * should be able to find/join the list.
+ */
 export const ShareCodeModal = ({
   visible,
   shareCode,
@@ -25,6 +44,8 @@ export const ShareCodeModal = ({
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
 
+  // Copies the share code to the system clipboard and confirms via a
+  // native Alert — no other feedback/analytics side effect here.
   const handleCopy = async () => {
     await Clipboard.setStringAsync(shareCode);
     Alert.alert('Copied!', 'Share code copied to clipboard.');

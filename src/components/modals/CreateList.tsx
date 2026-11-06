@@ -1,3 +1,13 @@
+/**
+ * CreateList.tsx
+ *
+ * Modal form for creating a new gift list: collects a list name and a
+ * "shareable" toggle, then hands the values off to the parent via
+ * `onCreate` — this component has no direct backend/Supabase dependency,
+ * it's purely presentational/form state. The parent screen is responsible
+ * for actually persisting the list (and, if shareable, generating the
+ * share code shown afterward by `ShareCodeModal`).
+ */
 import React, { useState } from 'react';
 import {
   View,
@@ -16,6 +26,15 @@ import {
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAppTheme, ThemeColors } from '../../theme/ThemeContext';
 
+/**
+ * Props for {@link CreateListModal}.
+ *
+ * - `onCreate(name, isSharable)` fires only after client-side validation
+ *   (non-empty, trimmed name) passes; the modal does not call it directly
+ *   from input — see `handleCreate` below.
+ * - `loading` disables all inputs/buttons and shows a spinner on the Create
+ *   button while the parent's creation request is in flight.
+ */
 interface CreateListModalProps {
   visible: boolean;
   onClose: () => void;
@@ -23,6 +42,11 @@ interface CreateListModalProps {
   loading?: boolean;
 }
 
+/**
+ * Modal form for capturing a new list's name and shareable flag. Validates
+ * the name is non-blank before invoking `onCreate`, and resets its own
+ * local input state after a successful submit or on close.
+ */
 export const CreateListModal = ({
   visible,
   onClose,
@@ -34,6 +58,9 @@ export const CreateListModal = ({
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
 
+  // Guards against creating a list with a blank/whitespace-only name; the
+  // Create button is also visually disabled in that state (see
+  // `disabledButton` usage below), this is the corresponding logic guard.
   const handleCreate = () => {
     if (name.trim().length === 0) return;
     onCreate(name.trim(), isSharable);

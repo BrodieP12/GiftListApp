@@ -19,10 +19,27 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 // Services
 import { AuthService } from '../services/AuthService';
 import { UserService, createDefaultUser } from '../services/UserService';
-import { auth } from '../api/firebase';
 import { useAppTheme } from '../theme/ThemeContext';
-import {CrashLogger} from "../services/LoggingService";
+import { CrashLogger } from '../services/LoggingService';
 
+/**
+ * CreateProfile
+ * ---------------------------------------------------------------------------
+ * Two-step account creation / onboarding flow: collects personal info +
+ * COPPA (child-privacy) data in Step 1, then account credentials + legal
+ * consent (Terms/Privacy/GDPR) in Step 2, and registers the user with
+ * Supabase Auth + creates their `profiles` row.
+ *
+ * Navigation:
+ * - Reached from `LoginScreen` via "Don't have an account? Sign Up"
+ *   (`AuthStackParamList['CreateProfile']`, no params).
+ * - Does not navigate away on success (see handleSubmitProfile) — once
+ *   Supabase Auth's `onAuthStateChange` fires, `RootNavigator`/`useAuth`
+ *   swaps the Auth stack for the authenticated app stack automatically.
+ *
+ * Local component: `Checkbox` is a small themed checkbox used for the
+ * consent toggles in Step 2 (Terms, Privacy, GDPR data-processing consent).
+ */
 const Checkbox = ({ value, onValueChange, label, themeColors }: any) => (
   <TouchableOpacity 
     style={styles.checkboxRow} 
@@ -39,6 +56,18 @@ const Checkbox = ({ value, onValueChange, label, themeColors }: any) => (
   </TouchableOpacity>
 );
 
+/**
+ * Main two-step signup form.
+ *
+ * `step` (1 or 2) drives which fieldset is rendered; both steps share this
+ * single component/state rather than being separate screens so validation
+ * state (e.g. `isMinor`) computed in Step 1 stays available when Step 2
+ * checks whether extra consent is required.
+ *
+ * `navigation` prop is accepted but currently unused directly — navigation
+ * back to the app happens implicitly via the auth-state listener in
+ * `useAuth`/`RootNavigator` once registration succeeds.
+ */
 export const CreateProfile = ({ navigation }: any) => {
   const { isDark: isDarkMode, colors} = useAppTheme();
   const [step, setStep] = useState(1);
@@ -63,7 +92,12 @@ export const CreateProfile = ({ navigation }: any) => {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [acceptedDataProcessing, setAcceptedDataProcessing] = useState(false);
 
-  // Age Check
+  // COPPA age check: whenever the birthday changes, recompute whether the
+  // user is a minor (under 13) using a simple year-difference comparison
+  // (not full month/day precision — good enough for gating the parental
+  // consent field, not used as a legal age-verification system). Driving
+  // `isMinor` from an effect (rather than inline) keeps it in sync even if
+  // birthday is changed after the user already saw/dismissed the warning.
   useEffect(() => {
     if (birthday) {
       const year = birthday.getFullYear();
@@ -74,16 +108,19 @@ export const CreateProfile = ({ navigation }: any) => {
     }
   }, [birthday]);
 
-  // Start Location Check early when moving to Step 2
+  // GDPR region check: as soon as the user reaches Step 2, kick off an IP
+  // geolocation lookup (ipapi.co) to pre-select "I am an EU/EEA resident" so
+  // EU users see the mandatory data-processing consent checkbox without
+  // having to know to look for it themselves. This is only a UX nicety/best
+  // guess, not authoritative — the user can still toggle `isEUUser` off
+  // manually, and a failed lookup silently leaves it `false` rather than
+  // blocking the form.
   useEffect(() => {
     if (step === 2) {
       const checkLocation = async () => {
         setCheckingLocation(true);
         try {
           let response = await fetch('https://ipapi.co/json/');
-          if (!response.ok) {
-            response = await fetch('http://ip-api.com/json');
-          }
           if (response.ok) {
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.includes("application/json")) {
@@ -106,6 +143,15 @@ export const CreateProfile = ({ navigation }: any) => {
     }
   }, [step]);
 
+  /**
+   * Validates Step 1 (personal info) before advancing to Step 2.
+   *
+   * Rules:
+   * - Display name and birthday are required.
+   * - COPPA: if the birthday computation flagged the user as a minor
+   *   (`isMinor`), a parent/guardian email is mandatory before continuing —
+   *   this is the app's parental-consent gate for under-13 users.
+   */
   const handleNextStep1 = () => {
     if (!displayName || !birthday) {
       Alert.alert('Error', 'Please fill out your name and a valid birthday.');
@@ -118,6 +164,32 @@ export const CreateProfile = ({ navigation }: any) => {
     setStep(2);
   };
 
+  /**
+   * Validates Step 2 and completes registration: creates the Supabase Auth
+   * user, then writes the full `User` profile (including compliance fields)
+   * to the `profiles` table.
+   *
+   * Validation order (each step short-circuits with an Alert on failure):
+   * 1. Basic — email/password/confirmPassword all present, passwords match,
+   *    password length >= 6 (mirrors Supabase Auth's own minimum so the user
+   *    gets the friendlier client-side message first).
+   * 2. Compliance — Terms and Privacy Policy acceptance are mandatory for
+   *    every user. If the location check flagged `isEUUser`, explicit GDPR
+   *    data-processing consent (`acceptedDataProcessing`) is additionally
+   *    required.
+   * 3. Email-uniqueness pre-check via `AuthService.isEmailInUse` — advisory
+   *    only (see AuthService docs); Supabase Auth's own `signUp` is still
+   *    the final authority and can itself reject a duplicate email.
+   * 4. Registration + profile creation.
+   *
+   * Firebase -> Supabase migration note: this used to call
+   * `supabase.auth.getUser()` right after `signUp()` to get the new user's
+   * id, which failed because there is no active session yet immediately
+   * after sign-up (email confirmation pending, or auto-confirm not yet
+   * propagated). It now uses the `{ id, email }` returned directly by
+   * `AuthService.register()` instead, which comes from the `signUp` response
+   * itself and doesn't depend on a session existing.
+   */
   const handleSubmitProfile = async () => {
     // 1. Basic Validation
     if (!email || !password || !confirmPassword) {
@@ -154,26 +226,24 @@ export const CreateProfile = ({ navigation }: any) => {
       }
 
       // 4. Registration
-      await AuthService.register(email, password);
-      const userRecord = auth.currentUser;
-      if (!userRecord) throw new Error("Auth succeeded but user is null.");
+      const authUser = await AuthService.register(email, password);
 
-      const newUser = createDefaultUser(userRecord.uid, email);
+      const newUser = createDefaultUser(authUser.id, email);
       newUser.displayName = displayName;
       newUser.givenName = givenName;
       newUser.familyName = familyName;
-      newUser.birthday = birthday;
+      newUser.birthday = birthday ? birthday.toISOString() : null;
       newUser.minorProtection.isMinor = isMinor;
       newUser.minorProtection.parentEmail = parentEmail;
       newUser.legalAcceptance.termsAccepted = termsAccepted;
       newUser.legalAcceptance.privacyAccepted = privacyAccepted;
-      newUser.legalAcceptance.acceptanceDate = new Date();
+      newUser.legalAcceptance.acceptanceDate = new Date().toISOString();
       newUser.legalAcceptance.isEUUser = isEUUser;
       newUser.legalAcceptance.gdprApplies = isEUUser;
       newUser.legalAcceptance.acceptedDataProcessing = acceptedDataProcessing;
 
-      await UserService.createUserDocument(newUser);
-      Alert.alert("Success", "Account created successfully!");
+      await UserService.createUserProfile(newUser);
+      Alert.alert('Success', 'Account created successfully!');
     } catch (error: any) {
       CrashLogger.error(error);
       Alert.alert('Registration Failed', error.message || "An unexpected error occurred.");

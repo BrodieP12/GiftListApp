@@ -1,3 +1,13 @@
+/**
+ * GiftListRow.tsx
+ *
+ * Renders a single gift list summary card (title + "Owner: Me" / "Shared
+ * With Me" subtitle + a "View" button) for use in list rows on the
+ * dashboard screen. Wraps its content in a `Swipeable` so the user can
+ * swipe left to reveal a delete action, when `onDelete` is provided —
+ * lists the current user doesn't own but merely has access to can be
+ * rendered without delete support by omitting `onDelete`.
+ */
 import React from 'react';
 import {
   View,
@@ -16,10 +26,22 @@ import { GiftList } from '../../types/models';
 import { useAuth } from '../../hooks/useAuth';
 import { useAppTheme } from '../../theme/ThemeContext';
 
+/**
+ * Props for {@link GiftListRow}.
+ *
+ * - `list` is the list to display; ownership is determined by comparing
+ *   `list.ownerId` against the current authenticated user (`useAuth`).
+ * - `onDelete` is optional — when omitted, the row renders without a swipe-
+ *   to-delete action (`Swipeable`'s `renderRightActions` is left
+ *   `undefined`), which is used for lists the user doesn't own/can't
+ *   delete.
+ * - The `*Style` props let the parent (e.g. a FlatList) override row
+ *   styling per usage.
+ */
 interface GiftListRowProps {
   list: GiftList;
   onPress: () => void;
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
   containerStyle?: StyleProp<ViewStyle>;
   cardStyle?: StyleProp<ViewStyle>;
   deleteActionStyle?: StyleProp<ViewStyle>;
@@ -60,7 +82,7 @@ export const GiftListRow = ({
         ]}>
           <TouchableOpacity
               style={styles.deleteActionButton}
-              onPress={() => onDelete(list.id)}
+              onPress={() => onDelete?.(list.id)}
           >
             <Animated.View style={{ transform: [{ scale }] }}>
               <FontAwesome5 name="trash" size={24} color="#fff" />
@@ -73,7 +95,7 @@ export const GiftListRow = ({
   return (
       <View style={[styles.swipeContainer, containerStyle]}>
         <Swipeable
-            renderRightActions={renderRightActions}
+            renderRightActions={onDelete ? renderRightActions : undefined}
             friction={2}
             containerStyle={[styles.swipeableElement, { backgroundColor: colors.danger }]}
         >
@@ -86,6 +108,9 @@ export const GiftListRow = ({
               <Text style={[styles.cardTitle, { color: colors.text }, titleStyle]}>
                 {list.title}
               </Text>
+              {/* Ownership label: compares the list's ownerId against the
+                  signed-in user's id to decide whether this is one of the
+                  user's own lists or one shared with them by someone else. */}
               <Text style={[styles.cardSub, { color: colors.textDim }, subTitleStyle]}>
                 {list.ownerId === user?.uid ? 'Owner: Me' : 'Shared With Me'}
               </Text>

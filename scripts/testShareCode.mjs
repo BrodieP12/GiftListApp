@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDWxeuR5lvWg4mSGd17OYWLRNLXbr1y64s",
+  apiKey: process.env.FIREBASE_API_KEY,
   authDomain: "giftlistapp-557ce.firebaseapp.com",
   databaseURL: "https://giftlistapp-557ce-default-rtdb.firebaseio.com",
   projectId: "giftlistapp-557ce",

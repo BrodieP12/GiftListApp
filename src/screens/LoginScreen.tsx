@@ -16,7 +16,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../navigation/AppNavigator';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
-import {CrashLogger} from "../services/LoggingService";
+import { CrashLogger } from '../services/LoggingService';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -24,6 +24,29 @@ interface LoginScreenProps {
   navigation: LoginScreenNavigationProp;
 }
 
+/**
+ * LoginScreen
+ * ---------------------------------------------------------------------------
+ * The email/password sign-in screen and entry point of the unauthenticated
+ * (Auth) navigation stack. Also offers a "forgot password" reset-email flow
+ * and a link into the CreateProfile signup flow.
+ *
+ * Navigation:
+ * - Route: `AuthStackParamList['Login']`, no params.
+ * - "Sign Up" link navigates to `CreateProfile` (no params).
+ * - On successful login there is no explicit navigation call — signing in
+ *   updates the Supabase Auth session, which `useAuth`'s
+ *   `onAuthStateChange` listener picks up, causing `RootNavigator` to swap
+ *   from the Auth stack to the authenticated app tabs automatically.
+ *
+ * Validation/business rules:
+ * - Both email and password are required before attempting login.
+ * - Auth errors from Supabase are translated to user-friendly copy by
+ *   `AuthService.login` (via `mapAuthError`) and shown verbatim in an Alert.
+ * - "Forgot password" requires an email to already be typed in the email
+ *   field (no separate prompt) before it will send a reset email via
+ *   `AuthService.sendPasswordReset`.
+ */
 export const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +55,13 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
 
+  /**
+   * Validates required fields then delegates to `AuthService.login`
+   * (Supabase `signInWithPassword`). On success, no explicit action is
+   * needed here — see the screen-level note on how the auth-state listener
+   * takes over navigation. On failure, the mapped error message is shown to
+   * the user via Alert.
+   */
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields.');
@@ -97,13 +127,26 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('CreateProfile')} 
+        <TouchableOpacity
+          onPress={async () => {
+            if (!email) { Alert.alert('Enter your email first'); return; }
+            try {
+              await AuthService.sendPasswordReset(email);
+              Alert.alert('Email Sent', 'Check your inbox for a password reset link.');
+            } catch (e: any) {
+              Alert.alert('Error', e.message);
+            }
+          }}
           style={styles.switchContainer}
         >
-          <Text style={styles.switchText}>
-            Don't have an account? Sign Up
-          </Text>
+          <Text style={styles.switchText}>Forgot password?</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate('CreateProfile')}
+          style={styles.switchContainer}
+        >
+          <Text style={styles.switchText}>Don't have an account? Sign Up</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAwareScrollView>

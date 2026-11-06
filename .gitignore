@@ -32,6 +32,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -41,3 +42,15 @@ yarn-error.*
 /android
 
 public/latest.apk
+
+# Firebase / Google client config (contains API keys)
+google-services.json
+GoogleService-Info.plist
+
+# Stray nested copy of the repo and Python bytecode
+/GiftListApp-main/
+__pycache__/
+*.pyc
+
+# Local Claude Code settings
+.claude/settings.local.json
