@@ -1,12 +1,30 @@
 // src/components/ScrollToBottomFab.tsx
+/**
+ * ScrollToBottomFab.tsx
+ *
+ * Small floating action button (a downward-arrow circle) that fades/scales
+ * in and out based on a `visible` prop. Intended to float over a scrollable
+ * list (e.g. a chat/conversation screen) so the user can jump back to the
+ * latest message when they've scrolled up; the parent screen owns the
+ * scroll-position logic and just toggles `visible`.
+ */
 import React, { useEffect, useRef } from 'react';
 import { Animated, TouchableOpacity, Text, StyleSheet } from 'react-native';
 
+/** Props for {@link ScrollToBottomFab}. `visible` drives the fade/scale
+ * animation and disables touches while hidden; `onPress` is typically wired
+ * to scroll the parent list to its bottom/end. */
 interface ScrollToBottomFabProps {
     visible: boolean;
     onPress: () => void;
 }
 
+/**
+ * Animated floating "scroll to bottom" button. Purely presentational — it
+ * does not track scroll position itself, it only animates its own
+ * opacity/scale in response to the `visible` prop and forwards taps via
+ * `onPress`.
+ */
 export const ScrollToBottomFab = ({ visible, onPress }: ScrollToBottomFabProps) => {
     // Initialize to 1 if visible, 0 if not
     const fabAnim = useRef(new Animated.Value(visible ? 1 : 0)).current;

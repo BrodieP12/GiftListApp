@@ -10,11 +10,40 @@ import { useListDetail } from '../hooks/useListDetail';
 import { useAppTheme } from '../theme/ThemeContext';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftItemRow } from '../components/lists/GiftItemRow';
+import { ItemDetailModal } from '../components/lists/ItemDetailModal';
 import { CrashLogger } from '../services/LoggingService';
-import { ItemClaim } from '../types/models';
+import { GiftItemUI, ItemClaim } from '../types/models';
 import { ConfirmationModal } from '../components/modals/Confirmation';
 import { ListService } from '../services/ListService';
 
+/**
+ * ListDetailScreen
+ * ---------------------------------------------------------------------------
+ * Shows the items on a single gift list, viewed either by the list's owner
+ * (who manages items but must never see who has claimed what — see below)
+ * or by a friend/guest who can claim items they intend to buy.
+ *
+ * Navigation:
+ * - Route: `AppStackParamList['ListDetail']` — expects
+ *   `{ listId: string; ownerId: string }` in `route.params`, both supplied
+ *   by the caller (DashboardScreen row tap) since they're already known
+ *   there and avoid an extra fetch just to determine ownership.
+ * - Owner-only header "edit" button navigates to `ListEdit` with
+ *   `{ listId }`.
+ * - Owner-only FAB navigates to `AddItem` with `{ listId }`.
+ *
+ * Business rule — the core "surprise" guarantee of this app:
+ * - `isOwner` is derived by comparing the signed-in user's id to the route's
+ *   `ownerId`. `useListDetail` uses `isOwner` to decide whether to even
+ *   subscribe to claim data at all: when the viewer *is* the owner, it skips
+ *   the claims subscription entirely (see useListDetail.ts), so
+ *   `item.claimStatus` is always null for the owner and the UI has no way to
+ *   accidentally reveal who claimed what on their own list.
+ * - Non-owners see claim status and can toggle their own claim
+ *   (claim/unclaim) via `handleToggleClaim`, but only for themselves —
+ *   `ClaimService`/RLS is the actual enforcement point preventing a user
+ *   from unclaiming someone else's claim.
+ */
 type Props = StackScreenProps<AppStackParamList, 'ListDetail'>;
 
 export const ListDetailScreen = ({ route, navigation }: Props) => {
@@ -24,15 +53,20 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
 
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [confirmVisible, setConfirmVisible] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<GiftItemUI | null>(null);
 
-  const currentUserId = user?.uid ?? ''; 
+  const currentUserId = user?.uid ?? '';
   const isOwner = currentUserId === ownerId;
 
-  // Extracted logic using our new custom hook!
+  // Item list + claim-toggle logic extracted into useListDetail; notably it
+  // only subscribes to claim data when !isOwner (see hook + comment above),
+  // which is what actually keeps claims hidden from the list owner.
   const { items, loading, handleToggleClaim } = useListDetail(
     ownerId, listId, isOwner, currentUserId
   );
 
+  // Stages an item for deletion and opens the confirmation modal; deletion
+  // itself happens in handleConfirmDelete only after the owner confirms.
   const handleDeletePress = (id: string) => {
     setDeleteTargetId(id);
     setConfirmVisible(true);
@@ -52,6 +86,9 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
   };
   // Removed obsolete dashboard components
 
+  // Injects an "Edit" icon into the stack header, but only for the list
+  // owner — non-owners (viewing via a share code) have no edit rights on
+  // someone else's list, so the button simply isn't rendered for them.
   useEffect(() => {
     // Set Header button for Edit if owner
     if (isOwner) {
@@ -84,7 +121,7 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
                 {...item}
                 item={item}
                 claim={(item.claimStatus || { claimedBy: '' }) as ItemClaim}
-                onPress={() => {}}
+                onPress={() => setSelectedItem(item)}
                 onDelete={handleDeletePress}
                 currentUserId={currentUserId}
                 isOwner={isOwner}
@@ -115,6 +152,14 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
         message="Are you sure you want to delete this item? This action cannot be undone."
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmVisible(false)}
+      />
+
+      <ItemDetailModal
+        item={selectedItem}
+        isOwner={isOwner}
+        currentUserId={currentUserId}
+        onClose={() => setSelectedItem(null)}
+        onToggleClaim={handleToggleClaim}
       />
     </SafeAreaView>
   );

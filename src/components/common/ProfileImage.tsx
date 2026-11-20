@@ -1,3 +1,14 @@
+/**
+ * ProfileImage.tsx
+ *
+ * Renders a user's avatar as an initials badge (no photo upload support in
+ * this app) — a colored circle showing up to two initials derived from the
+ * user's given/family name, falling back to the first letter of their
+ * email. Used anywhere a user needs to be represented visually: profile
+ * screens, friend lists, conversation headers, etc. The background color is
+ * deterministically generated from the user's email so the same person
+ * always gets the same color across the app/sessions.
+ */
 import React, { useMemo } from "react";
 import { StyleSheet, Dimensions, View, Text, ViewStyle, StyleProp, TouchableOpacity } from "react-native";
 
@@ -13,6 +24,13 @@ const getHashOfString = (str: string) => {
     return hash;
 };
 
+/**
+ * Deterministically derives a pastel background color from a string (the
+ * user's email). Same input always produces the same color, which is what
+ * gives each user a stable, recognizable avatar color across the app.
+ * Mixes the hashed RGB channels with white (`mixWithWhite`) to keep the
+ * result pastel/light rather than a harsh saturated color.
+ */
 // 2. Convert that integer into a pastel Hex color
 const generateConsistentPastelColor = (name: string) => {
     const hash = getHashOfString(name);
@@ -32,6 +50,11 @@ const generateConsistentPastelColor = (name: string) => {
         b.toString(16).padStart(2, '0');
 };
 
+/**
+ * Picks black or white initials text color based on the perceived
+ * brightness (YIQ) of the generated background color, so the initials stay
+ * legible regardless of which pastel shade a given user was assigned.
+ */
 // 3. Ensure text is always readable against the chosen background
 const getAccessibleTextColor = (hexColor: string) => {
     const hex = hexColor.replace('#', '');
@@ -45,6 +68,16 @@ const getAccessibleTextColor = (hexColor: string) => {
     return (yiq >= 128) ? '#000000' : '#FFFFFF';
 };
 
+/**
+ * Props for {@link ProfileImage}.
+ *
+ * - `email` is used both as a fallback initial (when no name is available)
+ *   and as the seed for the deterministic background color.
+ * - `givenName`/`familyName` supply up to two initials; either may be empty.
+ * - `size` sets the circle's diameter (and scales font size proportionally).
+ * - `onPress` makes the badge tappable (e.g. to view a profile); the
+ *   TouchableOpacity is disabled when omitted.
+ */
 interface ProfileImageProps {
     email: string;
     givenName: string;
@@ -54,7 +87,13 @@ interface ProfileImageProps {
     style?: StyleProp<ViewStyle>;
 }
 
-const ProfileImage = ({ 
+/**
+ * Circular initials-based avatar badge. Computes initials from
+ * `givenName`/`familyName` (falling back to the first letter of `email`
+ * when no name parts are available) and renders them over a color that is
+ * consistently derived from the user's email.
+ */
+const ProfileImage = ({
     email, 
     givenName, 
     familyName, 

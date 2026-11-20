@@ -1,3 +1,12 @@
+/**
+ * FeedbackModal.tsx
+ *
+ * Bottom-sheet-style modal that lets a signed-in user submit app feedback
+ * (general comment, bug report, or feature request), optionally anonymously.
+ * Rendered by {@link FeedbackTrigger}, which decides *when* to show it
+ * (shake gesture or edge swipe); this component only owns the form UI and
+ * the submit flow via `FeedbackService.submitFeedback`.
+ */
 import React, { useState } from 'react';
 import {
   Modal,
@@ -18,6 +27,9 @@ import { FeedbackService } from '../../services/FeedbackService';
 import { useAuth } from '../../hooks/useAuth';
 import {CrashLogger} from "../../services/LoggingService";
 
+/** Props for {@link FeedbackModal}. `visible` controls the native Modal's
+ * visibility; `onClose` is called both when the user cancels and after a
+ * successful submit. */
 interface FeedbackModalProps {
   visible: boolean;
   onClose: () => void;
@@ -25,6 +37,13 @@ interface FeedbackModalProps {
 
 type FeedbackType = 'general' | 'bug' | 'feature';
 
+/**
+ * Feedback submission form. Lets the user pick a feedback type (general/bug/
+ * feature), enter free text, and optionally send anonymously — in which
+ * case the displayed/submitted sender email is replaced with a placeholder
+ * (`anonymous@example.com`) rather than the user's real address. Requires
+ * an authenticated user (`useAuth`); submitting is a no-op if there is none.
+ */
 export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps) => {
   const { user } = useAuth();
   const [text, setText] = useState('');
@@ -32,19 +51,23 @@ export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps) => {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [type, setType] = useState<FeedbackType>('general');
 
+  // Validates and submits the feedback form. `user.uid` is always sent (so
+  // submissions are still traceable/moderatable server-side) even when
+  // `isAnonymous` is true — anonymity here only affects the email shown to
+  // whoever reviews feedback, not the underlying auth attribution.
   const handleSubmit = async () => {
     if (!user) return;
     if (!text.trim()) {
       Alert.alert('Empty Feedback', 'Please enter some text before sending.');
       return;
     }
-    
+
     setLoading(true);
     try {
       await FeedbackService.submitFeedback(
-        user.uid, 
-        user.email || 'Anonymous', 
-        text, 
+        user.uid,
+        user.email || 'Anonymous',
+        text,
         type,
         isAnonymous
       );
@@ -61,6 +84,9 @@ export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps) => {
     }
   };
 
+  // "Sending as" preview shown to the user: masked to a placeholder address
+  // when Anonymous is toggled on, so the user can see for themselves what
+  // will (and won't) be visible on their submission.
   const senderEmail = isAnonymous ? 'anonymous@example.com' : (user?.email || 'N/A');
 
   return (

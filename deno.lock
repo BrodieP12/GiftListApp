@@ -1,0 +1,62 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.117.0"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.117.0": "52358cc08fc0a25278a2be371821c2eb1fa5c615ba76dbca43a01b2d122f0201"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@expo/fingerprint@~0.15.4",
+        "npm:@react-native-async-storage/async-storage@^2.2.0",
+        "npm:@react-native-community/datetimepicker@8.4.4",
+        "npm:@react-native-firebase/analytics@24",
+        "npm:@react-native-firebase/app@24",
+        "npm:@react-native-firebase/crashlytics@24",
+        "npm:@react-navigation/bottom-tabs@^7.18.18",
+        "npm:@react-navigation/native@^7.1.28",
+        "npm:@react-navigation/stack@^7.7.1",
+        "npm:@supabase/supabase-js@^2.109.0",
+        "npm:@testing-library/jest-native@^5.4.3",
+        "npm:@types/jest@29.5.14",
+        "npm:@types/react-native-vector-icons@^6.4.18",
+        "npm:@types/react-test-renderer@^19.1.0",
+        "npm:@types/react@19.1",
+        "npm:expo-application@~7.0.8",
+        "npm:expo-build-properties@~1.0.10",
+        "npm:expo-clipboard@~8.0.8",
+        "npm:expo-constants@~18.0.13",
+        "npm:expo-dev-client@~6.0.20",
+        "npm:expo-device@~8.0.10",
+        "npm:expo-file-system@~19.0.24",
+        "npm:expo-image-manipulator@~14.0.8",
+        "npm:expo-image-picker@~17.0.10",
+        "npm:expo-localization@~17.0.9",
+        "npm:expo-sensors@~15.0.8",
+        "npm:expo-splash-screen@~31.0.13",
+        "npm:expo-status-bar@~3.0.9",
+        "npm:expo-system-ui@~6.0.9",
+        "npm:expo@~54.0.33",
+        "npm:jest-expo@54.0",
+        "npm:jest@^29.7.0",
+        "npm:nativewind@^4.2.3",
+        "npm:posthog-react-native@^4.67.0",
+        "npm:react-dom@19.1.0",
+        "npm:react-native-gesture-handler@2.28",
+        "npm:react-native-image-picker@^8.2.1",
+        "npm:react-native-keyboard-aware-scroll-view@~0.9.5",
+        "npm:react-native-safe-area-context@5.6",
+        "npm:react-native-screens@4.16",
+        "npm:react-native-vector-icons@^10.3.0",
+        "npm:react-native-web@0.21",
+        "npm:react-native@0.81.5",
+        "npm:react-test-renderer@19.1.0",
+        "npm:react@19.1.0",
+        "npm:tailwindcss@^3.4.19",
+        "npm:typescript@~5.9.2"
+      ]
+    }
+  }
+}

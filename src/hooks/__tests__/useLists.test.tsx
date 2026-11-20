@@ -15,7 +15,14 @@ describe('useLists Hook', () => {
     });
 
     it('should fetch lists successfully for a valid user', async () => {
-        (ListService.getOwnedLists as jest.Mock).mockResolvedValue([{ id: '1', title: 'Test List' }]);
+        (ListService.listenToOwnedLists as jest.Mock).mockImplementation((uid, onUpdate) => {
+            onUpdate([{ id: '1', title: 'Test List' }]);
+            return jest.fn();
+        });
+        (ListService.listenToSharedLists as jest.Mock).mockImplementation((uid, onUpdate) => {
+            onUpdate([]);
+            return jest.fn();
+        });
         
         let hookResult: any;
         const TestComponent = () => {
@@ -27,13 +34,20 @@ describe('useLists Hook', () => {
             create(<TestComponent />);
         });
 
-        expect(ListService.getOwnedLists).toHaveBeenCalledWith('user123');
-        expect(hookResult.lists).toEqual([{ id: '1', title: 'Test List' }]);
+        expect(ListService.listenToOwnedLists).toHaveBeenCalledWith('user123', expect.any(Function), expect.any(Function));
+        expect(hookResult.ownedLists).toEqual([{ id: '1', title: 'Test List' }]);
         expect(hookResult.loading).toBe(false);
     });
 
     it('should handle errors gracefully when fetch fails', async () => {
-        (ListService.getOwnedLists as jest.Mock).mockRejectedValue(new Error('Network error'));
+        (ListService.listenToOwnedLists as jest.Mock).mockImplementation((uid, onUpdate, onError) => {
+            onError(new Error('Network error'));
+            return jest.fn();
+        });
+        (ListService.listenToSharedLists as jest.Mock).mockImplementation((uid, onUpdate) => {
+            onUpdate([]);
+            return jest.fn();
+        });
         
         let hookResult: any;
         const TestComponent = () => {
@@ -51,6 +65,14 @@ describe('useLists Hook', () => {
     });
 
     it('should create a new list and return the result', async () => {
+        (ListService.listenToOwnedLists as jest.Mock).mockImplementation((uid, onUpdate) => {
+            onUpdate([]);
+            return jest.fn();
+        });
+        (ListService.listenToSharedLists as jest.Mock).mockImplementation((uid, onUpdate) => {
+            onUpdate([]);
+            return jest.fn();
+        });
         (ListService.createList as jest.Mock).mockResolvedValue({ listId: 'new-123', shareCode: 'ABCD' });
         
         let hookResult: any;

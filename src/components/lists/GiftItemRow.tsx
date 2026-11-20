@@ -1,3 +1,27 @@
+/**
+ * GiftItemRow.tsx
+ *
+ * Renders a single gift item as a swipeable row (used inside a list's item
+ * FlatList on the list detail screen). Shows the item's image/placeholder,
+ * name, price, description, and optional "substitutions OK" badge and
+ * external link, plus a claim button.
+ *
+ * Key business rule: the list **owner** must never see who has claimed
+ * their own gift items (to preserve the surprise), so the entire claim
+ * button — and by extension any "claimed"/"claimed by me" state — is only
+ * rendered when `isOwner` is false. The `claim` data passed in for an owner
+ * view is expected to already be scrubbed upstream (see `ItemClaim` in
+ * `types/models.ts`), but this component also enforces the rule locally by
+ * gating the claim UI behind `!isOwner`.
+ *
+ * Swipe-to-delete: the row is wrapped in a `Swipeable` (from
+ * react-native-gesture-handler) whose right-side reveal action calls
+ * `onDelete`. It is only wired up when `isOwner` is true — non-owners have
+ * no delete rights on someone else's items (the "List owner can manage
+ * items" RLS policy on the `items` table would reject the request anyway),
+ * so the swipe gesture is disabled for them entirely rather than revealing
+ * a delete button that would just fail.
+ */
 import React from 'react';
 import {
   View,
@@ -19,6 +43,19 @@ import { Button } from '../common/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { ThemeColors } from '../../theme/ThemeContext';
 
+/**
+ * Props for {@link GiftItemRow}.
+ *
+ * - `item`/`claim` are the underlying data; `claim` reflects the current
+ *   viewer's visibility into claim state (should be empty/unclaimed-looking
+ *   for the list owner — see file header).
+ * - `currentUserId`/`isOwner` determine claim-button visibility and whether
+ *   the claim is "mine" (togglable) vs. someone else's (locked).
+ * - `onToggleClaim` claims the item if currently unclaimed by the caller, or
+ *   unclaims it if the caller is already the claimer.
+ * - `onDelete` is invoked when the swipe-to-delete action is used.
+ * - The `*Style` props allow the parent list to override row styling.
+ */
 interface GiftItemRowProps extends GiftItemUI {
     item: GiftItem;
     claim: ItemClaim;
@@ -57,6 +94,11 @@ export const GiftItemRow = ({
 }: GiftItemRowProps) => {
   const { colors } = useAppTheme();
 
+  // Swipe-to-delete right-action UI, matching the pattern used by
+  // GiftListRow. Only rendered for the list owner (see the Swipeable usage
+  // below) — non-owners have no delete rights on someone else's items
+  // (enforced server-side by the "List owner can manage items" RLS policy
+  // on the `items` table), so they never even get the swipe gesture.
   const renderRightActions = (
       progress: Animated.AnimatedInterpolation<number>,
       _dragX: Animated.AnimatedInterpolation<number>
@@ -85,6 +127,11 @@ export const GiftItemRow = ({
     );
   };
 
+  // Claim state is derived purely from `claim.claimedBy`. For the list
+  // owner, `claim` is expected to arrive already stripped of claimer info
+  // upstream, so these derived flags naturally read as "unclaimed" for them
+  // — the `!isOwner` guard around the claim button below is the belt-and-
+  // suspenders enforcement of the "owner never sees claims" rule.
   const isClaimed = Boolean(claim.claimedBy);
   const isClaimedByMe = claim.claimedBy === currentUserId;
   const displayPrice = item.price != undefined && item.price > 0 ? `$${item.price.toFixed(2)}` : 'Price Undetermined';
@@ -99,77 +146,105 @@ export const GiftItemRow = ({
   };
 
   return (
-    <View style={[
-      styles.card, 
-      { backgroundColor: colors.card, shadowColor: colors.border },
-      isClaimed && !isClaimedByMe && styles.cardDimmed
-    ]}>
-      {/* Image Section */}
-      {item.imageUri ? (
-        <Image source={{ uri: item.imageUri }} style={styles.image} />
-      ) : (
-        <View style={[styles.placeholderImage, { backgroundColor: colors.background }]}>
-          <FontAwesome5 name="image" size={24} color={colors.textDim} />
-          <Text style={[styles.placeholderText, { color: colors.textDim }]}>No Image</Text>
-        </View>
-      )}
-
-      {/* Content Section */}
-      <View style={styles.contentContainer}>
-        <View style={styles.headerRow}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
-          <Text style={styles.price}>{displayPrice}</Text>
-        </View>
-
-        {item.description ? (
-          <Text style={[styles.description, { color: colors.textDim }]} numberOfLines={3}>{item.description}</Text>
-        ) : null}
-
-        <View style={styles.badgeRow}>
-          {item.substitutions && (
-            <View style={styles.subBadge}>
-              <FontAwesome5 name="sync-alt" size={10} color="#1e8e3e" style={{ marginRight: 4 }} />
-              <Text style={styles.subBadgeText}>Substitutions OK</Text>
+    <View style={[styles.swipeContainer, containerStyle]}>
+      <Swipeable
+        renderRightActions={isOwner ? renderRightActions : undefined}
+        friction={2}
+        containerStyle={styles.swipeableElement}
+      >
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onPress}
+          style={[
+            styles.card,
+            { backgroundColor: colors.card, shadowColor: colors.border },
+            isClaimed && !isClaimedByMe && styles.cardDimmed,
+            cardStyle,
+          ]}
+        >
+          {/* Image Section */}
+          {item.imageUri ? (
+            <Image source={{ uri: item.imageUri }} style={styles.image} />
+          ) : (
+            <View style={[styles.placeholderImage, { backgroundColor: colors.background }]}>
+              <FontAwesome5 name="image" size={24} color={colors.textDim} />
+              <Text style={[styles.placeholderText, { color: colors.textDim }]}>No Image</Text>
             </View>
           )}
-          {item.url && (
-            <TouchableOpacity onPress={handleLinkPress} style={styles.linkContainer}>
-              <FontAwesome5 name="link" size={12} color={colors.primary} style={{ marginRight: 4 }} />
-              <Text style={[styles.linkText, { color: colors.primary }]}>View Link</Text>
+
+          {/* Content Section */}
+          <View style={styles.contentContainer}>
+            <View style={styles.headerRow}>
+              <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
+              <Text style={styles.price}>{displayPrice}</Text>
+            </View>
+
+            {item.description ? (
+              <Text style={[styles.description, { color: colors.textDim }]} numberOfLines={3}>{item.description}</Text>
+            ) : null}
+
+            <View style={styles.badgeRow}>
+              {item.substitutions && (
+                <View style={styles.subBadge}>
+                  <FontAwesome5 name="sync-alt" size={10} color="#1e8e3e" style={{ marginRight: 4 }} />
+                  <Text style={styles.subBadgeText}>Substitutions OK</Text>
+                </View>
+              )}
+              {item.url && (
+                <TouchableOpacity onPress={handleLinkPress} style={styles.linkContainer}>
+                  <FontAwesome5 name="link" size={12} color={colors.primary} style={{ marginRight: 4 }} />
+                  <Text style={[styles.linkText, { color: colors.primary }]}>View Link</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Claim Action — hidden entirely for the list owner so they can never
+              see whether/by whom an item has been claimed (spoiler prevention).
+              For non-owners: unclaimed items show "Claim"; items claimed by the
+              current viewer show "Unclaim" (and use the danger color to signal
+              a destructive/undo action); items claimed by someone else show a
+              disabled "Claimed" state. */}
+          {!isOwner && (
+            <TouchableOpacity
+              style={[
+                styles.claimBtn,
+                { backgroundColor: colors.primary },
+                isClaimedByMe ? [styles.claimBtnMine, { backgroundColor: colors.danger }] : isClaimed ? styles.claimBtnTaken : null
+              ]}
+              onPress={() => onToggleClaim(item.id, claim.claimedBy || null)}
+              disabled={isClaimed && !isClaimedByMe}
+            >
+              <Text style={[
+                styles.claimBtnText,
+                isClaimed && !isClaimedByMe && styles.claimBtnTextTaken
+              ]}>
+                {isClaimedByMe ? 'Unclaim' : isClaimed ? 'Claimed' : 'Claim'}
+              </Text>
             </TouchableOpacity>
           )}
-        </View>
-      </View>
-
-      {/* Claim Action */}
-      {!isOwner && (
-        <TouchableOpacity 
-          style={[
-            styles.claimBtn,
-            { backgroundColor: colors.primary }, 
-            isClaimedByMe ? [styles.claimBtnMine, { backgroundColor: colors.danger }] : isClaimed ? styles.claimBtnTaken : null
-          ]}
-          onPress={() => onToggleClaim(item.id, claim.claimedBy || null)}
-          disabled={isClaimed && !isClaimedByMe}
-        >
-          <Text style={[
-            styles.claimBtnText,
-            isClaimed && !isClaimedByMe && styles.claimBtnTextTaken
-          ]}>
-            {isClaimedByMe ? 'Unclaim' : isClaimed ? 'Claimed' : 'Claim'}
-          </Text>
         </TouchableOpacity>
-      )}
+      </Swipeable>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  // Wraps the Swipeable so the reveal-to-delete action's rounded corners
+  // and outer margin line up with the card underneath it (mirrors
+  // GiftListRow's swipeContainer/swipeableElement split).
+  swipeContainer: {
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  swipeableElement: {
+    borderRadius: 12,
+  },
   card: {
     flexDirection: 'row',
     borderRadius: 12,
     padding: 12,
-    marginBottom: 12,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,

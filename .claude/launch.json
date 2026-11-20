@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "GiftListApp Android",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["expo", "run:android"],
+      "port": 8081
+    }
+  ]
+}
