@@ -11,6 +11,7 @@ import { FeedbackTrigger } from './src/components/common/FeedbackTrigger';
 import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import { FeedbackProvider } from './src/theme/FeedbackContext';
 import { ThemeProvider } from './src/theme/ThemeContext';
+import { UpdateProvider } from './src/hooks/useAppUpdate';
 import { CrashLogger, posthog } from './src/services/LoggingService';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -39,12 +40,14 @@ export default function App() {
         <ErrorBoundary>
           <ThemeProvider>
             <AuthProvider>
-              <FeedbackProvider>
-                <FeedbackTrigger>
-                  <RootNavigator />
-                  <StatusBar style="auto" />
-                </FeedbackTrigger>
-              </FeedbackProvider>
+              <UpdateProvider>
+                <FeedbackProvider>
+                  <FeedbackTrigger>
+                    <RootNavigator />
+                    <StatusBar style="auto" />
+                  </FeedbackTrigger>
+                </FeedbackProvider>
+              </UpdateProvider>
             </AuthProvider>
           </ThemeProvider>
         </ErrorBoundary>
