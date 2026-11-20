@@ -117,7 +117,7 @@ export const RetailerService = {
     if (!url || !isValidUrl(url)) return {};
 
     try {
-      const { data, error } = await supabase.functions.invoke('extractProduct', {
+      const { data, error } = await supabase.functions.invoke('extract-product', {
         body: { url },
       });
       if (error) throw error;

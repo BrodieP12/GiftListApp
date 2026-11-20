@@ -57,3 +57,7 @@ __pycache__/
 
 # Temporary scratch directory
 scratch/
+
+# Supabase CLI runtime & temp state
+supabase/.temp/
+

@@ -71,10 +71,22 @@ export const ImageUploadService = {
       throw new ImageUploadError('Failed to process the selected image.', 'unknown');
     }
 
-    const { data, error } = await supabase.functions.invoke<{ url: string }>(
-      'moderate-and-upload-image',
+    let { data, error } = await supabase.functions.invoke<{ url: string }>(
+      'moderation',
       { body: { imageBase64: base64, contentType: 'image/jpeg' } },
     );
+
+    if (error) {
+      // Fallback in case the function is deployed under its descriptive name
+      const fallback = await supabase.functions.invoke<{ url: string }>(
+        'moderate-and-upload-image',
+        { body: { imageBase64: base64, contentType: 'image/jpeg' } },
+      );
+      if (!fallback.error) {
+        data = fallback.data;
+        error = null;
+      }
+    }
 
     if (error) {
       // `FunctionsHttpError.context` is the raw Response from the function;
