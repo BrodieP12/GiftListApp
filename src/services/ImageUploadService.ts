@@ -71,29 +71,17 @@ export const ImageUploadService = {
       throw new ImageUploadError('Failed to process the selected image.', 'unknown');
     }
 
-    let { data, error } = await supabase.functions.invoke<{ url: string }>(
+    const { data, error } = await supabase.functions.invoke<{ url: string }>(
       'moderation',
       { body: { imageBase64: base64, contentType: 'image/jpeg' } },
     );
 
     if (error) {
-      // Fallback in case the function is deployed under its descriptive name
-      const fallback = await supabase.functions.invoke<{ url: string }>(
-        'moderate-and-upload-image',
-        { body: { imageBase64: base64, contentType: 'image/jpeg' } },
-      );
-      if (!fallback.error) {
-        data = fallback.data;
-        error = null;
-      }
-    }
-
-    if (error) {
       // `FunctionsHttpError.context` is the raw Response from the function;
-      // parse it to recover the structured `{ error, message }` body the
-      // function sends back (see moderate-and-upload-image/index.ts).
+      // parse it to recover the structured `{ error, message, detail }` body the
+      // function sends back (see moderation/index.ts).
       const context = (error as { context?: Response }).context;
-      let payload: { error?: string; message?: string } | null = null;
+      let payload: { error?: string; message?: string; detail?: string } | null = null;
       try {
         payload = context ? await context.json() : null;
       } catch {
@@ -114,7 +102,12 @@ export const ImageUploadService = {
       }
 
       CrashLogger.error(error, 'ImageUploadService.uploadItemImage');
-      throw new ImageUploadError(payload?.message ?? 'Failed to upload image.', 'unknown');
+      const status = context?.status;
+      const serverDetail = payload?.message ?? payload?.detail ?? payload?.error;
+      const message = serverDetail
+        ? (status ? `Failed to upload image (${status}): ${serverDetail}` : `Failed to upload image: ${serverDetail}`)
+        : (status ? `Failed to upload image (${status}).` : 'Failed to upload image.');
+      throw new ImageUploadError(message, 'unknown');
     }
 
     if (!data?.url) {
