@@ -2,7 +2,7 @@
   "expo": {
     "name": "GiftListApp",
     "slug": "giftlistapp",
-    "version": "1.0.11",
+    "version": "1.0.12",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
@@ -11,7 +11,7 @@
     },
     "android": {
       "package": "com.brodiepasker.giftlistapp",
-      "versionCode": 12
+      "versionCode": 13
     },
     "plugins": [
       "@react-native-community/datetimepicker",
