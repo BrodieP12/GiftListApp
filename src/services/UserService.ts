@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
 import { User, UserProfile } from '../types/models';
 
@@ -73,7 +74,7 @@ export const UserService = {
    *   any other DB error.
    */
   async createUserProfile(user: User): Promise<void> {
-    const { error } = await supabase.from('profiles').upsert({
+    const payload: Record<string, any> = {
       id: user.uid,
       email: user.email,
       display_name: user.displayName,
@@ -91,8 +92,18 @@ export const UserService = {
       gdpr_applies: user.legalAcceptance?.gdprApplies ?? false,
       accepted_data_processing: user.legalAcceptance?.acceptedDataProcessing ?? false,
       preferred_retailers: user.preferredRetailers ?? null,
-    });
-    if (error) throw error;
+    };
+
+    const { error } = await supabase.from('profiles').upsert(payload);
+    if (error) {
+      if (error.code === '42703' || error.message?.includes('preferred_retailers')) {
+        delete payload.preferred_retailers;
+        const retry = await supabase.from('profiles').upsert(payload);
+        if (retry.error) throw retry.error;
+        return;
+      }
+      throw error;
+    }
   },
 
   /**
@@ -112,7 +123,26 @@ export const UserService = {
 
     if (error) throw error;
     if (!data) return null;
-    return mapRowToUser(data);
+    const user = mapRowToUser(data);
+
+    // If preferredRetailers is not present on the DB profile, check local storage fallback
+    if (!user.preferredRetailers || user.preferredRetailers.length === 0) {
+      try {
+        const cached =
+          (await AsyncStorage.getItem(`@giftlist_preferred_retailers_${uid}`)) ||
+          (await AsyncStorage.getItem('@giftlist_preferred_retailers'));
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            user.preferredRetailers = parsed;
+          }
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+
+    return user;
   },
 
   /**
@@ -170,12 +200,36 @@ export const UserService = {
    * @param retailers - Array of retailer domain strings, e.g. ['amazon.com', 'target.com'].
    */
   async updatePreferredRetailers(uid: string, retailers: string[]): Promise<void> {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ preferred_retailers: retailers })
-      .eq('id', uid);
+    // 1. Always cache locally in AsyncStorage so user choices are never lost
+    try {
+      await AsyncStorage.setItem(`@giftlist_preferred_retailers_${uid}`, JSON.stringify(retailers));
+      await AsyncStorage.setItem('@giftlist_preferred_retailers', JSON.stringify(retailers));
+    } catch {
+      // non-blocking
+    }
 
-    if (error) throw error;
+    // 2. Persist to Supabase public.profiles
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ preferred_retailers: retailers })
+        .eq('id', uid);
+
+      if (error) {
+        // If preferred_retailers column does not exist on profiles yet (42703), safely fallback to local cache
+        if (error.code === '42703' || error.message?.includes('preferred_retailers')) {
+          console.warn('[UserService.updatePreferredRetailers] Column preferred_retailers missing on profiles table; cached in local storage.');
+          return;
+        }
+        throw error;
+      }
+    } catch (err: any) {
+      if (err?.code === '42703' || err?.message?.includes('preferred_retailers')) {
+        console.warn('[UserService.updatePreferredRetailers] Column preferred_retailers missing; cached in local storage.');
+        return;
+      }
+      throw err;
+    }
   },
 };
 

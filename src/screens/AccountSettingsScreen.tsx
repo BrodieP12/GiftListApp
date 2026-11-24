@@ -77,7 +77,7 @@ export const AccountSettingsScreen = () => {
     };
   }, [navigation, colors]);
 
-  // 2. Commit store preferences to Supabase
+  // 2. Commit store preferences to Supabase (with automatic local fallback)
   const persistSettings = async (retailersToSave: string[]): Promise<boolean> => {
     if (!user?.uid) return false;
     try {
@@ -85,20 +85,25 @@ export const AccountSettingsScreen = () => {
       await UserService.updatePreferredRetailers(user.uid, retailersToSave);
       updateUserPreferences(retailersToSave);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       CrashLogger.error(err, 'AccountSettingsScreen.persistSettings');
-      Alert.alert('Save Failed', 'Could not save store preferences to your account. Please check your connection.');
+      const msg = err?.message || 'Could not save store preferences. Please try again.';
+      Alert.alert('Save Issue', msg);
       return false;
     } finally {
       setSaving(false);
     }
   };
 
-  // 3. Custom back button and gesture listener that saves to cloud on back
+  // 3. Custom back button and gesture listener that saves on back
   const handleBack = async () => {
     if (isDirty && !hasSavedRef.current) {
       hasSavedRef.current = true;
-      await persistSettings(selectedRetailersRef.current);
+      const success = await persistSettings(selectedRetailersRef.current);
+      if (!success) {
+        hasSavedRef.current = false;
+        return;
+      }
     }
     navigation.goBack();
   };
@@ -135,8 +140,12 @@ export const AccountSettingsScreen = () => {
       if (!hasSavedRef.current && isDirty) {
         e.preventDefault();
         hasSavedRef.current = true;
-        await persistSettings(selectedRetailersRef.current);
-        navigation.dispatch(e.data.action);
+        const success = await persistSettings(selectedRetailersRef.current);
+        if (success) {
+          navigation.dispatch(e.data.action);
+        } else {
+          hasSavedRef.current = false;
+        }
       }
     });
     return unsubscribe;

@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
 import { GiftList, GiftItem } from '../types/models';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -142,7 +143,29 @@ export const ListService = {
 
     if (error) throw error;
     if (!data) return null;
-    return mapRowToList(data);
+    const list = mapRowToList(data);
+
+    // If inheritStorePreferences or preferredRetailers are not defined in DB, check local storage fallback
+    if (list.preferredRetailers === null || list.preferredRetailers === undefined) {
+      try {
+        const cached = await AsyncStorage.getItem(`@giftlist_list_store_prefs_${listId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed === 'object') {
+            if (typeof parsed.inheritStorePreferences === 'boolean') {
+              list.inheritStorePreferences = parsed.inheritStorePreferences;
+            }
+            if (Array.isArray(parsed.preferredRetailers)) {
+              list.preferredRetailers = parsed.preferredRetailers;
+            }
+          }
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+
+    return list;
   },
 
   /**
@@ -179,8 +202,35 @@ export const ListService = {
       payload.preferred_retailers = updates.preferredRetailers;
     }
 
+    // Always cache list store preferences locally
+    if (updates.inheritStorePreferences !== undefined || updates.preferredRetailers !== undefined) {
+      try {
+        const cachedPrefs = {
+          inheritStorePreferences: updates.inheritStorePreferences ?? true,
+          preferredRetailers: updates.preferredRetailers ?? null,
+        };
+        await AsyncStorage.setItem(`@giftlist_list_store_prefs_${listId}`, JSON.stringify(cachedPrefs));
+      } catch {
+        // non-blocking
+      }
+    }
+
     const { error } = await supabase.from('lists').update(payload).eq('id', listId);
-    if (error) throw error;
+    if (error) {
+      // If store preference columns don't exist in Supabase yet (42703), retry with only core fields
+      if (
+        error.code === '42703' ||
+        error.message?.includes('inherit_store_preferences') ||
+        error.message?.includes('preferred_retailers')
+      ) {
+        delete payload.inherit_store_preferences;
+        delete payload.preferred_retailers;
+        const retry = await supabase.from('lists').update(payload).eq('id', listId);
+        if (retry.error) throw retry.error;
+        return;
+      }
+      throw error;
+    }
   },
 
 
