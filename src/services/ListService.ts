@@ -55,6 +55,8 @@ function mapRowToList(row: any): GiftList {
     isArchived: Boolean(row.is_archived),
     archivedAt: row.archived_at ?? null,
     shareCode: row.share_code ?? null,
+    inheritStorePreferences: row.inherit_store_preferences ?? true,
+    preferredRetailers: Array.isArray(row.preferred_retailers) ? row.preferred_retailers : null,
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
   };
@@ -160,12 +162,21 @@ export const ListService = {
    * @throws {PostgrestError} If the update is rejected by RLS (not the owner) or on any other
    *   DB error.
    */
-  async updateList(listId: string, updates: Partial<Pick<GiftList, 'title' | 'isPrivate' | 'shareCode'>>): Promise<void> {
+  async updateList(
+    listId: string,
+    updates: Partial<Pick<GiftList, 'title' | 'isPrivate' | 'shareCode' | 'inheritStorePreferences' | 'preferredRetailers'>>
+  ): Promise<void> {
     const payload: Record<string, any> = { updated_at: new Date().toISOString() };
     if (updates.title !== undefined) payload.title = updates.title.trim();
     if (updates.isPrivate !== undefined) {
       payload.is_private = updates.isPrivate;
       payload.share_code = updates.isPrivate ? null : (updates.shareCode ?? generateShareCode());
+    }
+    if (updates.inheritStorePreferences !== undefined) {
+      payload.inherit_store_preferences = updates.inheritStorePreferences;
+    }
+    if (updates.preferredRetailers !== undefined) {
+      payload.preferred_retailers = updates.preferredRetailers;
     }
 
     const { error } = await supabase.from('lists').update(payload).eq('id', listId);

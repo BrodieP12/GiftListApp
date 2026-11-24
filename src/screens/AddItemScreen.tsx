@@ -62,6 +62,23 @@ export const AddItemScreen = () => {
   const [matchModalVisible, setMatchModalVisible] = useState(false);
   const [matchCandidates, setMatchCandidates] = useState<ProductMatchCandidate[]>([]);
   const [lastSearchQuery, setLastSearchQuery] = useState('');
+  const [effectiveRetailers, setEffectiveRetailers] = useState<string[] | undefined>(undefined);
+
+  // Load the list's effective store preferences (list custom if enabled, otherwise user account preferences)
+  useEffect(() => {
+    if (!listId) return;
+    ListService.getList(listId).then((l) => {
+      if (l) {
+        if (!l.inheritStorePreferences && l.preferredRetailers && l.preferredRetailers.length > 0) {
+          setEffectiveRetailers(l.preferredRetailers);
+        } else if (user?.preferredRetailers && user.preferredRetailers.length > 0) {
+          setEffectiveRetailers(user.preferredRetailers);
+        }
+      }
+    }).catch((err) => {
+      CrashLogger.error(err, 'AddItemScreen.loadListPreferences');
+    });
+  }, [listId, user?.preferredRetailers]);
 
   const applyMatchToMissingFields = (match: ProductMatchCandidate) => {
     if (!url.trim() && match.url) {
@@ -84,7 +101,7 @@ export const AddItemScreen = () => {
 
     setFindingOnline(true);
     try {
-      const result = await RetailerService.findProductListing(name, imageUri);
+      const result = await RetailerService.findProductListing(name, imageUri, effectiveRetailers);
       setLastSearchQuery(result.searchQuery);
 
       if (!result.candidates.length) {

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/common/Button';
 import Constants from 'expo-constants';
@@ -35,12 +36,29 @@ import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
  *   FeedbackService) rather than being inlined into this screen.
  */
 export const UserProfileScreen = () => {
+  const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const { openFeedback } = useFeedback();
   const { isChecking, updateInfo, checkForUpdates, openUpdate } = useAppUpdate();
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
+
+  // Top-right gear icon in the header for account & store settings
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('AccountSettings')}
+          style={{ marginRight: 16, padding: 6 }}
+          accessibilityLabel="Account and Store Settings"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <FontAwesome5 name="cog" size={20} color={colors.text} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, colors]);
 
   const fullName = `${user?.givenName || ''} ${user?.familyName || ''}`.trim() || user?.displayName || 'User';
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
@@ -56,6 +74,18 @@ export const UserProfileScreen = () => {
         />
         <Text style={styles.userName}>{fullName}</Text>
         <Text style={styles.userEmail}>{user?.email}</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Preferences</Text>
+        <Text style={styles.description}>Customize which stores and links the product extractor prioritizes.</Text>
+        <Button
+          title="Store Preferences"
+          variant="secondary"
+          onPress={() => navigation.navigate('AccountSettings')}
+          icon="sliders-h"
+          style={styles.button}
+        />
       </View>
 
       <View style={styles.section}>

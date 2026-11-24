@@ -37,6 +37,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   logout: () => Promise<void>;
+  updateUserPreferences: (retailers: string[]) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -44,6 +45,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   logout: async () => {},
+  updateUserPreferences: () => {},
 });
 
 /**
@@ -136,9 +138,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
   };
 
+  const updateUserPreferences = (retailers: string[]) => {
+    setUser((prev) => (prev ? { ...prev, preferredRetailers: retailers } : null));
+  };
+
   return React.createElement(
     AuthContext.Provider,
-    { value: { user, session, loading, logout } },
+    { value: { user, session, loading, logout, updateUserPreferences } },
     children
   );
 };

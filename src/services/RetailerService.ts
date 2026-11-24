@@ -50,14 +50,19 @@ export const RetailerService = {
   
   async findProductListing(
     productName: string,
-    imageUri?: string | null
+    imageUri?: string | null,
+    preferredRetailers?: string[]
   ): Promise<FindListingResponse> {
     const payload: {
       productName: string;
       imageUrl?: string;
       imageBase64?: string;
       contentType?: string;
-    } = { productName: productName.trim() };
+      preferredRetailers?: string[];
+    } = {
+      productName: productName.trim(),
+      ...(preferredRetailers && preferredRetailers.length > 0 ? { preferredRetailers } : {}),
+    };
 
     if (imageUri) {
       if(/^https?:\/\//i.test(imageUri)) {

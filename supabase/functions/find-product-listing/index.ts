@@ -46,6 +46,7 @@ interface FindListingRequest {
   imageUrl?: string;
   imageBase64?: string;
   contentType?: string;
+  preferredRetailers?: string[];
 }
 
 interface CandidateMatch {
@@ -166,7 +167,8 @@ Return ONLY valid JSON with keys:
 /** Step 2: Search for product listings via Tavily (1 credit per call using search_depth: "fast"). */
 async function searchListingsWithTavily(
   searchQuery: string,
-  tavilyApiKey: string
+  tavilyApiKey: string,
+  preferredRetailers?: string[]
 ): Promise<Array<{ title: string; url: string; content: string }>> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (tavilyApiKey) {
@@ -197,12 +199,24 @@ async function searchListingsWithTavily(
   const data = await res.json();
   const results = Array.isArray(data?.results) ? data.results : [];
 
+  const targetPreferred =
+    preferredRetailers && preferredRetailers.length > 0
+      ? preferredRetailers.map((d) => d.replace(/^www\./, '').toLowerCase())
+      : PREFERRED_RETAILERS;
+
   return results
     .filter((r: { url?: string }) => typeof r?.url === 'string' && r.url.startsWith('http'))
     .sort((a: { url: string }, b: { url: string }) => {
-      const aPreferred = PREFERRED_RETAILERS.some((d) => getHostname(a.url).endsWith(d)) ? 1 : 0;
-      const bPreferred = PREFERRED_RETAILERS.some((d) => getHostname(b.url).endsWith(d)) ? 1 : 0;
-      return bPreferred - aPreferred;
+      const aHost = getHostname(a.url);
+      const bHost = getHostname(b.url);
+      const aPrefIndex = targetPreferred.findIndex((d) => aHost === d || aHost.endsWith(`.${d}`));
+      const bPrefIndex = targetPreferred.findIndex((d) => bHost === d || bHost.endsWith(`.${d}`));
+
+      const aMatch = aPrefIndex !== -1 ? 1 : 0;
+      const bMatch = bPrefIndex !== -1 ? 1 : 0;
+      if (aMatch !== bMatch) return bMatch - aMatch;
+      if (aPrefIndex !== -1 && bPrefIndex !== -1) return aPrefIndex - bPrefIndex;
+      return 0;
     });
 }
 
@@ -356,7 +370,11 @@ Deno.serve(async (req) => {
     );
 
     // 2. Find matching retail URLs with Tavily (1 free credit)
-    const rawResults = await searchListingsWithTavily(searchQuery, tavilyApiKey);
+    const rawResults = await searchListingsWithTavily(
+      searchQuery,
+      tavilyApiKey,
+      body.preferredRetailers
+    );
     if (rawResults.length === 0) {
       return jsonResponse({
         searchQuery,

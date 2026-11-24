@@ -90,6 +90,7 @@ export const UserService = {
       is_eu_user: user.legalAcceptance?.isEUUser ?? false,
       gdpr_applies: user.legalAcceptance?.gdprApplies ?? false,
       accepted_data_processing: user.legalAcceptance?.acceptedDataProcessing ?? false,
+      preferred_retailers: user.preferredRetailers ?? null,
     });
     if (error) throw error;
   },
@@ -161,6 +162,21 @@ export const UserService = {
     if (error) throw error;
     return (data ?? []).map(mapRowToProfile);
   },
+
+  /**
+   * Updates the preferred retailers list for a user account in Supabase.
+   *
+   * @param uid - The profile id (= auth uid) to update.
+   * @param retailers - Array of retailer domain strings, e.g. ['amazon.com', 'target.com'].
+   */
+  async updatePreferredRetailers(uid: string, retailers: string[]): Promise<void> {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ preferred_retailers: retailers })
+      .eq('id', uid);
+
+    if (error) throw error;
+  },
 };
 
 /** Maps a raw `profiles` table row (snake_case) to the full camelCase `User` model, including private fields (legal acceptance, minor protection). Used for loading the current user's own profile. */
@@ -174,6 +190,7 @@ function mapRowToUser(row: any): User {
     photoURL: row.photo_url ?? null,
     birthday: row.birthday ?? null,
     isPremium: row.is_premium ?? false,
+    preferredRetailers: Array.isArray(row.preferred_retailers) ? row.preferred_retailers : undefined,
     createdAt: row.created_at ?? null,
     minorProtection: {
       isMinor: row.is_minor ?? false,
@@ -199,5 +216,6 @@ function mapRowToProfile(row: any): UserProfile {
     givenName: row.given_name ?? '',
     familyName: row.family_name ?? '',
     photoURL: row.photo_url ?? null,
+    preferredRetailers: Array.isArray(row.preferred_retailers) ? row.preferred_retailers : undefined,
   };
 }

@@ -10,6 +10,7 @@ import {
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { ProductMatchCandidate } from '../../services/RetailerService';
+import { getRetailerDisplayName } from '../../constants/retailers';
 
 interface Props {
   visible: boolean;
@@ -55,7 +56,7 @@ export const ProductMatchModal = ({
               >
                 <View style={styles.cardTop}>
                   <Text style={[styles.retailer, { color: colors.primary }]} numberOfLines={1}>
-                    {item.retailer}
+                    {getRetailerDisplayName(item.retailer)}
                   </Text>
                   <Text style={[styles.price, { color: colors.text }]}>
                     {item.price !== null ? `$${item.price.toFixed(2)}` : 'Price N/A'}

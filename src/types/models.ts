@@ -32,6 +32,7 @@ export interface User {
   birthday: string | null; // ISO date string
   isPremium: boolean;
   createdAt: string | null; // ISO date string
+  preferredRetailers?: string[];
 
   /** Child-safety/compliance fields required before a minor can use sharing features. */
   minorProtection: {
@@ -69,6 +70,8 @@ export interface GiftList {
   isArchived: boolean;
   archivedAt?: string| null;
   shareCode?: string | null;
+  inheritStorePreferences?: boolean;
+  preferredRetailers?: string[] | null;
   createdAt: string | null;
   updatedAt?: string | null;
 }
@@ -181,6 +184,7 @@ export interface UserProfile {
   givenName: string;
   familyName: string;
   photoURL: string | null;
+  preferredRetailers?: string[];
 }
 
 /**

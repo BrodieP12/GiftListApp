@@ -20,7 +20,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { usePostHog } from 'posthog-react-native';
@@ -34,6 +34,7 @@ import { ListDetailScreen } from '../screens/ListDetailScreen';
 import { AddItemScreen } from '../screens/AddItemScreen';
 import { ListEditScreen } from '../screens/ListEditScreen';
 import { UserProfileScreen } from '../screens/UserProfileScreen';
+import { AccountSettingsScreen } from '../screens/AccountSettingsScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { ConversationScreen } from '../screens/ConversationScreen';
@@ -55,6 +56,7 @@ export type AppStackParamList = {
   AddItem: { listId: string };
   ListEdit: { listId: string };
   UserProfileScreen: undefined;
+  AccountSettings: undefined;
   Friends: undefined;
   Conversations: undefined;
   Conversation: { conversationId: string };
@@ -119,6 +121,11 @@ const MessagesStack = () => (
 const ProfileStack = () => (
   <AppStack.Navigator>
     <AppStack.Screen name="UserProfileScreen" component={UserProfileScreen} options={{ title: 'Profile' }} />
+    <AppStack.Screen
+      name="AccountSettings"
+      component={AccountSettingsScreen}
+      options={{ title: 'Store Preferences' }}
+    />
   </AppStack.Navigator>
 );
 
@@ -166,7 +173,20 @@ const AppTabs = () => {
       <Tab.Screen name="ListsTab" component={ListsStack} options={{ tabBarLabel: 'Lists' }} />
       <Tab.Screen name="FriendsTab" component={FriendsStack} options={{ tabBarLabel: 'Friends' }} />
       <Tab.Screen name="MessagesTab" component={MessagesStack} options={{ tabBarLabel: 'Messages' }} />
-      <Tab.Screen name="ProfileTab" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
+      <Tab.Screen
+        name="ProfileTab"
+        component={ProfileStack}
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'UserProfileScreen';
+          return {
+            tabBarLabel: 'Profile',
+            tabBarStyle:
+              routeName === 'AccountSettings'
+                ? { display: 'none' }
+                : { backgroundColor: colors.card, borderTopColor: colors.border },
+          };
+        }}
+      />
     </Tab.Navigator>
   );
 };
