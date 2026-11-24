@@ -64,7 +64,14 @@ export const UserProfileScreen = () => {
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={true}
+      nestedScrollEnabled={true}
+      overScrollMode="always"
+      bounces={true}
+    >
       <View style={styles.header}>
         <ProfileImage
           email={user?.email ?? ''}
@@ -145,7 +152,7 @@ export const UserProfileScreen = () => {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, alignItems: 'center' },
+  content: { flexGrow: 1, padding: 20, paddingBottom: 60, alignItems: 'center' },
   header: { alignItems: 'center', marginBottom: 30, marginTop: 20 },
   userName: { fontSize: 24, fontWeight: 'bold', marginTop: 16, color: colors.text },
   userEmail: { fontSize: 16, marginTop: 4, color: colors.textDim },

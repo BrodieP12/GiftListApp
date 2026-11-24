@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
-  ScrollView,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -207,6 +207,9 @@ export const ListEditScreen = () => {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={true}
+      nestedScrollEnabled={true}
+      overScrollMode="always"
+      bounces={true}
     >
       <View style={styles.section}>
         <Text style={styles.label}>List Title</Text>
@@ -360,8 +363,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
+    flexGrow: 1,
     padding: 20,
-    paddingBottom: 80,
+    paddingBottom: 100,
   },
   center: {
     flex: 1,

@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Alert,
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
@@ -214,6 +214,9 @@ export const AccountSettingsScreen = () => {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={true}
+      nestedScrollEnabled={true}
+      overScrollMode="always"
+      bounces={true}
     >
       {/* Informational Cloud Banner */}
       <View style={styles.banner}>
@@ -363,8 +366,9 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
     },
     content: {
+      flexGrow: 1,
       padding: 16,
-      paddingBottom: 80,
+      paddingBottom: 100,
     },
     backButton: {
       paddingHorizontal: 16,
