@@ -1,6 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { GiftList } from '../types/models';
 import { ListService, CreateListResult } from '../services/ListService';
+import { supabase } from '../api/supabase';
+
+const mapListRow = (row: any): GiftList => ({
+  id: row.id,
+  ownerId: row.owner_id,
+  title: row.title,
+  isPrivate: row.is_private,
+  isArchived: row.is_archived,
+  archivedAt: row.archived_at ?? undefined,
+  shareCode: row.share_code ?? undefined,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at ?? undefined,
+});
 
 /**
  * Powers the dashboard's list of lists: the current user's own lists
@@ -33,6 +46,19 @@ export const useLists = (userId: string | undefined) => {
   const [sharedLists, setSharedLists] = useState<GiftList[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  const refreshOwnedLists = useCallback(async () => {
+    if(!userId) return;
+    const { data, error: fetchErr } = await supabase
+      .from('lists')
+      .select('*')
+      .eq('owner_id', userId)
+      .order('created_at', {ascending: false });
+
+    if(!fetchErr && data){
+      setOwnedLists(data.map(mapListRow))
+    }
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) { setOwnedLists([]); setSharedLists([]); setLoading(false); return; }
@@ -74,8 +100,32 @@ export const useLists = (userId: string | undefined) => {
   };
 
   const deleteList = async (listId: string): Promise<void> => {
-    return ListService.deleteList(listId);
+    const previous = ownedLists;
+    setOwnedLists((prev) => prev.filter((l) => l.id !== listId));
+    try{
+      await ListService.deleteList(listId);
+    } catch(err){
+      setOwnedLists(previous);
+      throw err;
+    }
   };
+
+  const archiveList = useCallback(async (listId: string): Promise<void> => {
+    const previous = ownedLists;
+    setOwnedLists((prev) => prev.filter((l) => l.id !== listId));
+    try{
+      await ListService.archiveList(listId);
+    } catch(err){
+      setOwnedLists(previous);
+      throw err;
+    }
+    
+    
+  }, [])
+
+  const unarchiveList = useCallback(async (listId: string) => {
+    await ListService.unarchiveList(listId);
+  }, [])
 
   // Joins a shared list by its share code (validated server-side via the
   // `join_list_by_code` RPC, which is expected to add the caller as a
@@ -91,5 +141,5 @@ export const useLists = (userId: string | undefined) => {
   // there's nothing left for a manual refetch to do.
   const fetchLists = async () => {};
 
-  return { ownedLists, sharedLists, loading, error, fetchLists, createList, deleteList, joinList };
+  return { ownedLists, sharedLists, loading, error, fetchLists, createList, archiveList, unarchiveList, deleteList, joinList };
 };

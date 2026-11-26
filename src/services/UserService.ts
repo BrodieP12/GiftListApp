@@ -1,5 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
 import { User, UserProfile } from '../types/models';
+import { NotificationPreferences } from '../types/notifications';
+import { mergeNotificationPreferences } from '../constants/notifications';
 
 /**
  * UserService
@@ -73,7 +76,7 @@ export const UserService = {
    *   any other DB error.
    */
   async createUserProfile(user: User): Promise<void> {
-    const { error } = await supabase.from('profiles').upsert({
+    const payload: Record<string, any> = {
       id: user.uid,
       email: user.email,
       display_name: user.displayName,
@@ -90,8 +93,29 @@ export const UserService = {
       is_eu_user: user.legalAcceptance?.isEUUser ?? false,
       gdpr_applies: user.legalAcceptance?.gdprApplies ?? false,
       accepted_data_processing: user.legalAcceptance?.acceptedDataProcessing ?? false,
-    });
-    if (error) throw error;
+      preferred_retailers: user.preferredRetailers ?? null,
+      notification_preferences: user.notificationPreferences ?? null,
+    };
+
+    const { error } = await supabase.from('profiles').upsert(payload);
+    if (error) {
+      if (
+        error.code === '42703' ||
+        error.message?.includes('preferred_retailers') ||
+        error.message?.includes('notification_preferences')
+      ) {
+        if (error.message?.includes('preferred_retailers') || error.code === '42703') {
+          delete payload.preferred_retailers;
+        }
+        if (error.message?.includes('notification_preferences') || error.code === '42703') {
+          delete payload.notification_preferences;
+        }
+        const retry = await supabase.from('profiles').upsert(payload);
+        if (retry.error) throw retry.error;
+        return;
+      }
+      throw error;
+    }
   },
 
   /**
@@ -111,7 +135,38 @@ export const UserService = {
 
     if (error) throw error;
     if (!data) return null;
-    return mapRowToUser(data);
+    const user = mapRowToUser(data);
+
+    // If preferredRetailers is not present on the DB profile, check local storage fallback
+    if (!user.preferredRetailers || user.preferredRetailers.length === 0) {
+      try {
+        const cached =
+          (await AsyncStorage.getItem(`@giftlist_preferred_retailers_${uid}`)) ||
+          (await AsyncStorage.getItem('@giftlist_preferred_retailers'));
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            user.preferredRetailers = parsed;
+          }
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+
+    // If notificationPreferences is not present on the DB profile, check local storage fallback
+    if (!user.notificationPreferences) {
+      try {
+        const cachedPrefs = await AsyncStorage.getItem(`@giftlist_notification_preferences_${uid}`);
+        if (cachedPrefs) {
+          user.notificationPreferences = mergeNotificationPreferences(JSON.parse(cachedPrefs));
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+
+    return user;
   },
 
   /**
@@ -161,6 +216,78 @@ export const UserService = {
     if (error) throw error;
     return (data ?? []).map(mapRowToProfile);
   },
+
+  /**
+   * Updates the preferred retailers list for a user account in Supabase.
+   *
+   * @param uid - The profile id (= auth uid) to update.
+   * @param retailers - Array of retailer domain strings, e.g. ['amazon.com', 'target.com'].
+   */
+  async updatePreferredRetailers(uid: string, retailers: string[]): Promise<void> {
+    // 1. Always cache locally in AsyncStorage so user choices are never lost
+    try {
+      await AsyncStorage.setItem(`@giftlist_preferred_retailers_${uid}`, JSON.stringify(retailers));
+      await AsyncStorage.setItem('@giftlist_preferred_retailers', JSON.stringify(retailers));
+    } catch {
+      // non-blocking
+    }
+
+    // 2. Persist to Supabase public.profiles
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ preferred_retailers: retailers })
+        .eq('id', uid);
+
+      if (error) {
+        // If preferred_retailers column does not exist on profiles yet (42703), safely fallback to local cache
+        if (error.code === '42703' || error.message?.includes('preferred_retailers')) {
+          console.warn('[UserService.updatePreferredRetailers] Column preferred_retailers missing on profiles table; cached in local storage.');
+          return;
+        }
+        throw error;
+      }
+    } catch (err: any) {
+      if (err?.code === '42703' || err?.message?.includes('preferred_retailers')) {
+        console.warn('[UserService.updatePreferredRetailers] Column preferred_retailers missing; cached in local storage.');
+        return;
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Updates the user's notification preferences in AsyncStorage and Supabase `public.profiles`.
+   */
+  async updateNotificationPreferences(uid: string, preferences: NotificationPreferences): Promise<void> {
+    const normalized = mergeNotificationPreferences(preferences);
+    try {
+      await AsyncStorage.setItem(`@giftlist_notification_preferences_${uid}`, JSON.stringify(normalized));
+    } catch {
+      // non-blocking
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notification_preferences: normalized })
+        .eq('id', uid);
+
+      if (error) {
+        if (error.code === '42703' || error.message?.includes('notification_preferences')) {
+          console.warn('[UserService.updateNotificationPreferences] Column notification_preferences missing; cached locally.');
+          return;
+        }
+        throw error;
+      }
+    } catch (err: any) {
+      if (err?.code === '42703' || err?.message?.includes('notification_preferences')) {
+        console.warn('[UserService.updateNotificationPreferences] Column notification_preferences missing; cached locally.');
+        return;
+      }
+      throw err;
+    }
+  },
 };
 
 /** Maps a raw `profiles` table row (snake_case) to the full camelCase `User` model, including private fields (legal acceptance, minor protection). Used for loading the current user's own profile. */
@@ -174,6 +301,10 @@ function mapRowToUser(row: any): User {
     photoURL: row.photo_url ?? null,
     birthday: row.birthday ?? null,
     isPremium: row.is_premium ?? false,
+    preferredRetailers: Array.isArray(row.preferred_retailers) ? row.preferred_retailers : undefined,
+    notificationPreferences: row.notification_preferences
+      ? mergeNotificationPreferences(row.notification_preferences)
+      : undefined,
     createdAt: row.created_at ?? null,
     minorProtection: {
       isMinor: row.is_minor ?? false,
@@ -199,5 +330,6 @@ function mapRowToProfile(row: any): UserProfile {
     givenName: row.given_name ?? '',
     familyName: row.family_name ?? '',
     photoURL: row.photo_url ?? null,
+    preferredRetailers: Array.isArray(row.preferred_retailers) ? row.preferred_retailers : undefined,
   };
 }

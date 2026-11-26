@@ -12,7 +12,6 @@ import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 import { Friend, UserProfile } from '../types/models';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AppStackParamList } from '../navigation/AppNavigator';
-import { posthog } from '../config/posthog';
 
 /**
  * FriendsScreen
@@ -85,7 +84,6 @@ export const FriendsScreen = ({ navigation }: { navigation: NavProp }) => {
   const handleSendRequest = async (targetId: string) => {
     try {
       await sendRequest(targetId);
-      posthog?.capture('friend_request_sent');
       Alert.alert('Request Sent', 'Friend request sent!');
       setSearchResults([]);
       setSearchQuery('');
@@ -111,33 +109,6 @@ export const FriendsScreen = ({ navigation }: { navigation: NavProp }) => {
     }
   };
 
-  const handleAcceptRequest = async (friendRowId: string) => {
-    try {
-      await acceptRequest(friendRowId);
-      posthog?.capture('friend_request_accepted');
-    } catch {
-      Alert.alert('Error', 'Could not accept friend request.');
-    }
-  };
-
-  const handleDeclineRequest = async (friendRowId: string) => {
-    try {
-      await declineRequest(friendRowId);
-      posthog?.capture('friend_request_declined');
-    } catch {
-      Alert.alert('Error', 'Could not decline friend request.');
-    }
-  };
-
-  const handleRemoveFriend = async (friendRowId: string) => {
-    try {
-      await removeFriend(friendRowId);
-      posthog?.capture('friend_removed');
-    } catch {
-      Alert.alert('Error', 'Could not remove friend.');
-    }
-  };
-
   const renderFriend = ({ item }: { item: Friend }) => {
     const name = item.profile?.displayName || item.profile?.email || 'Unknown';
     const isRequester = item.userId === user?.uid;
@@ -156,10 +127,10 @@ export const FriendsScreen = ({ navigation }: { navigation: NavProp }) => {
           </View>
           {!isRequester && (
             <View style={styles.rowActions}>
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => handleAcceptRequest(item.id)}>
+              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => acceptRequest(item.id)}>
                 <FontAwesome5 name="check" size={14} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.border }]} onPress={() => handleDeclineRequest(item.id)}>
+              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.border }]} onPress={() => declineRequest(item.id)}>
                 <FontAwesome5 name="times" size={14} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -181,7 +152,7 @@ export const FriendsScreen = ({ navigation }: { navigation: NavProp }) => {
           <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => handleMessage(item.userId === user?.uid ? item.friendId : item.userId)}>
             <FontAwesome5 name="comment" size={14} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#ff4444' }]} onPress={() => Alert.alert('Remove Friend', `Remove ${name}?`, [{ text: 'Cancel' }, { text: 'Remove', style: 'destructive', onPress: () => handleRemoveFriend(item.id) }])}>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#ff4444' }]} onPress={() => Alert.alert('Remove Friend', `Remove ${name}?`, [{ text: 'Cancel' }, { text: 'Remove', style: 'destructive', onPress: () => removeFriend(item.id) }])}>
             <FontAwesome5 name="user-times" size={14} color="#fff" />
           </TouchableOpacity>
         </View>

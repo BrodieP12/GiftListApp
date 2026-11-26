@@ -1,3 +1,5 @@
+import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
 import { GiftList, GiftItem } from '../types/models';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -51,7 +53,11 @@ function mapRowToList(row: any): GiftList {
     ownerId: row.owner_id,
     title: row.title,
     isPrivate: row.is_private,
+    isArchived: Boolean(row.is_archived),
+    archivedAt: row.archived_at ?? null,
     shareCode: row.share_code ?? null,
+    inheritStorePreferences: row.inherit_store_preferences ?? true,
+    preferredRetailers: Array.isArray(row.preferred_retailers) ? row.preferred_retailers : null,
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
   };
@@ -137,7 +143,29 @@ export const ListService = {
 
     if (error) throw error;
     if (!data) return null;
-    return mapRowToList(data);
+    const list = mapRowToList(data);
+
+    // If inheritStorePreferences or preferredRetailers are not defined in DB, check local storage fallback
+    if (list.preferredRetailers === null || list.preferredRetailers === undefined) {
+      try {
+        const cached = await AsyncStorage.getItem(`@giftlist_list_store_prefs_${listId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed === 'object') {
+            if (typeof parsed.inheritStorePreferences === 'boolean') {
+              list.inheritStorePreferences = parsed.inheritStorePreferences;
+            }
+            if (Array.isArray(parsed.preferredRetailers)) {
+              list.preferredRetailers = parsed.preferredRetailers;
+            }
+          }
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+
+    return list;
   },
 
   /**
@@ -157,17 +185,82 @@ export const ListService = {
    * @throws {PostgrestError} If the update is rejected by RLS (not the owner) or on any other
    *   DB error.
    */
-  async updateList(listId: string, updates: Partial<Pick<GiftList, 'title' | 'isPrivate' | 'shareCode'>>): Promise<void> {
+  async updateList(
+    listId: string,
+    updates: Partial<Pick<GiftList, 'title' | 'isPrivate' | 'shareCode' | 'inheritStorePreferences' | 'preferredRetailers'>>
+  ): Promise<void> {
     const payload: Record<string, any> = { updated_at: new Date().toISOString() };
     if (updates.title !== undefined) payload.title = updates.title.trim();
     if (updates.isPrivate !== undefined) {
       payload.is_private = updates.isPrivate;
       payload.share_code = updates.isPrivate ? null : (updates.shareCode ?? generateShareCode());
     }
+    if (updates.inheritStorePreferences !== undefined) {
+      payload.inherit_store_preferences = updates.inheritStorePreferences;
+    }
+    if (updates.preferredRetailers !== undefined) {
+      payload.preferred_retailers = updates.preferredRetailers;
+    }
+
+    // Always cache list store preferences locally
+    if (updates.inheritStorePreferences !== undefined || updates.preferredRetailers !== undefined) {
+      try {
+        const cachedPrefs = {
+          inheritStorePreferences: updates.inheritStorePreferences ?? true,
+          preferredRetailers: updates.preferredRetailers ?? null,
+        };
+        await AsyncStorage.setItem(`@giftlist_list_store_prefs_${listId}`, JSON.stringify(cachedPrefs));
+      } catch {
+        // non-blocking
+      }
+    }
 
     const { error } = await supabase.from('lists').update(payload).eq('id', listId);
-    if (error) throw error;
+    if (error) {
+      // If store preference columns don't exist in Supabase yet (42703), retry with only core fields
+      if (
+        error.code === '42703' ||
+        error.message?.includes('inherit_store_preferences') ||
+        error.message?.includes('preferred_retailers')
+      ) {
+        delete payload.inherit_store_preferences;
+        delete payload.preferred_retailers;
+        const retry = await supabase.from('lists').update(payload).eq('id', listId);
+        if (retry.error) throw retry.error;
+        return;
+      }
+      throw error;
+    }
   },
+
+
+  async archiveList(listId: string): Promise<void> {
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('lists')
+      .update({
+        is_archived: true,
+        archived_at: now,
+        updated_at: now,
+      })
+      .eq('id', listId);
+
+      if (error) throw error
+  },
+
+  async unarchiveList(listId: string): Promise<void> {
+    const { error } = await supabase
+      .from('lists')
+      .update({
+        is_archived: false,
+        archived_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', listId);
+
+      if (error) throw error;
+  },
+
 
   /**
    * Deletes a list outright.
@@ -181,8 +274,16 @@ export const ListService = {
    *   DB error.
    */
   async deleteList(listId: string): Promise<void> {
-    const { error } = await supabase.from('lists').delete().eq('id', listId);
+    const { data, error } = await supabase
+      .from('lists')
+      .delete()
+      .eq('id', listId)
+      .select('id');
+    
     if (error) throw error;
+    if(!data || data.length === 0){
+      throw new Error('List could not be deleted (not found or blocked by permissions).')
+    }
   },
 
   /**
@@ -211,6 +312,7 @@ export const ListService = {
         .from('lists')
         .select('*')
         .eq('owner_id', userId)
+        .eq('is_archived', false)
         .order('created_at', { ascending: false });
 
       if (error) { onError(new Error(error.message)); return; }
@@ -225,6 +327,49 @@ export const ListService = {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+  },
+
+  listenToArchivedLists(
+  userId: string,
+  onUpdate: (lists: GiftList[]) => void,
+  onError?: (error: Error) => void
+  ): () => void {
+    const fetchArchived = async () => {
+      const { data, error } = await supabase
+        .from('lists')
+        .select('*')
+        .eq('owner_id', userId)
+        .eq('is_archived', true)
+        .order('archived_at', { ascending: false });
+
+      if (error) {
+        onError?.(error);
+        return;
+      }
+      onUpdate((data ?? []).map(mapRowToList));
+    };
+
+    fetchArchived();
+
+    const channel = supabase
+      .channel(`lists:archived:${userId}:${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lists',
+          filter: `owner_id=eq.${userId}`,
+        },
+        () => {
+          fetchArchived();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   /**
@@ -256,9 +401,14 @@ export const ListService = {
         .from('list_members')
         .select('list_id, lists(*)')
         .eq('user_id', userId)
-        .eq('role', 'member');
+        .eq('role', 'member')
+        .eq('lists.is_archived', false);
 
-      if (error) { onError(new Error(error.message)); return; }
+      if (error) { 
+        onError(new Error(error.message)); 
+        return; 
+      }
+      
       const lists = (data ?? [])
         .map((row: any) => row.lists)
         .filter(Boolean)

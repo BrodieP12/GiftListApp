@@ -15,7 +15,6 @@ import { CrashLogger } from '../services/LoggingService';
 import { GiftItemUI, ItemClaim } from '../types/models';
 import { ConfirmationModal } from '../components/modals/Confirmation';
 import { ListService } from '../services/ListService';
-import { posthog } from '../config/posthog';
 
 /**
  * ListDetailScreen
@@ -77,7 +76,6 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
     if (!deleteTargetId) return;
     try {
       await ListService.deleteItem(listId, deleteTargetId);
-      posthog?.capture('item_deleted');
     } catch (error) {
       CrashLogger.error(error);
       Alert.alert('Error', 'Failed to delete item');

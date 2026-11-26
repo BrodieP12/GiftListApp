@@ -17,8 +17,6 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../navigation/AppNavigator';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 import { CrashLogger } from '../services/LoggingService';
-import { posthog } from '../config/posthog';
-import { PostHogLog } from '../services/PostHogLogService';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -73,10 +71,8 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
     setLoading(true);
     try {
       await AuthService.login(email, password);
-      posthog?.capture('user_logged_in');
-      PostHogLog.info('user_session_authenticated', { auth_method: 'password' });
     } catch (error: any) {
-      CrashLogger.error(error);
+      CrashLogger.error(error, 'LoginScreen.handleLogin');
       Alert.alert('Authentication Failed', error.message);
     } finally {
       setLoading(false);

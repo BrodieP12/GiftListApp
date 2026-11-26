@@ -6,14 +6,14 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AppStackParamList } from '../navigation/AppNavigator';
 import { ListService } from '../services/ListService';
 import { useAuth } from '../hooks/useAuth';
-import { RetailerService } from '../services/RetailerService';
+import { RetailerService, ProductMatchCandidate } from '../services/RetailerService';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext'; // IMPORT THEME Context
 import * as ImagePicker from 'expo-image-picker';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { KeyboardAwareScrollView} from "react-native-keyboard-aware-scroll-view";
 import {CrashLogger} from "../services/LoggingService";
 import { ImageUploadService, ImageUploadError } from "../services/ImageUploadService";
-import { posthog } from '../config/posthog';
+import { ProductMatchModal } from '../components/modals/ProductMatchModal';
 
 /**
  * AddItemScreen
@@ -57,6 +57,70 @@ export const AddItemScreen = () => {
   const [url, setUrl] = useState('');
   const [substitutions, setSubstitutions] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
+
+  const [findingOnline, setFindingOnline] = useState(false);
+  const [matchModalVisible, setMatchModalVisible] = useState(false);
+  const [matchCandidates, setMatchCandidates] = useState<ProductMatchCandidate[]>([]);
+  const [lastSearchQuery, setLastSearchQuery] = useState('');
+  const [effectiveRetailers, setEffectiveRetailers] = useState<string[] | undefined>(undefined);
+
+  // Load the list's effective store preferences (list custom if enabled, otherwise user account preferences)
+  useEffect(() => {
+    if (!listId) return;
+    ListService.getList(listId).then((l) => {
+      if (l) {
+        if (!l.inheritStorePreferences && l.preferredRetailers && l.preferredRetailers.length > 0) {
+          setEffectiveRetailers(l.preferredRetailers);
+        } else if (user?.preferredRetailers && user.preferredRetailers.length > 0) {
+          setEffectiveRetailers(user.preferredRetailers);
+        }
+      }
+    }).catch((err) => {
+      CrashLogger.error(err, 'AddItemScreen.loadListPreferences');
+    });
+  }, [listId, user?.preferredRetailers]);
+
+  const applyMatchToMissingFields = (match: ProductMatchCandidate) => {
+    if (!url.trim() && match.url) {
+      setUrl(match.url);
+    }
+    if ((!price.trim() || price.trim() === '0' || price.trim() === '0.00') && match.price !== null) {
+      setPrice(match.price.toFixed(2));
+    }
+    if (!description.trim() && match.description) {
+      setDescription(match.description);
+    }
+    setMatchModalVisible(false);
+  };
+
+  const handleFindOnline = async () => {
+    if (!name.trim()) {
+      Alert.alert('Item Name Needed', 'Enter a product name first so we know what to search for.');
+      return;
+    }
+
+    setFindingOnline(true);
+    try {
+      const result = await RetailerService.findProductListing(name, imageUri, effectiveRetailers);
+      setLastSearchQuery(result.searchQuery);
+
+      if (!result.candidates.length) {
+        Alert.alert('No Listing Found', 'Could not find a matching online listing. Try a more specific name.');
+        return;
+      }
+
+      if (result.candidates.length === 1) {
+        applyMatchToMissingFields(result.candidates[0]);
+      } else {
+        setMatchCandidates(result.candidates);
+        setMatchModalVisible(true);
+      }
+    } catch (err) {
+      Alert.alert('Lookup Failed', err instanceof Error ? err.message : 'Could not search online.');
+    } finally {
+      setFindingOnline(false);
+    }
+  };
 
   /**
    * Opens the device photo library so the user can attach a picture to the
@@ -209,11 +273,6 @@ export const AddItemScreen = () => {
         listId,
         imageUri: uploadedImageUrl,
       });
-      posthog?.capture('item_added', {
-        has_description: Boolean(description.trim()),
-        has_image: Boolean(uploadedImageUrl),
-        has_url: Boolean(url.trim()),
-      });
       navigation.goBack();
     } catch (e) {
       // @ts-ignore
@@ -275,6 +334,25 @@ export const AddItemScreen = () => {
         value={name} 
         onChangeText={setName} 
       />
+      {Boolean(name.trim() && (!url.trim() || !price.trim() || !description.trim())) && (
+      <TouchableOpacity
+        style={[
+          styles.autoFillBtn,
+          { borderColor: colors.primary, backgroundColor: colors.card },
+        ]}
+        onPress={handleFindOnline}
+        disabled={findingOnline}
+      >
+        {findingOnline ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : (
+          <FontAwesome5 name="magic" size={14} color={colors.primary} />
+        )}
+        <Text style={[styles.autoFillText, { color: colors.primary }]}>
+          {findingOnline ? 'Searching online...' : 'Find Online & Auto-Fill Missing Details'}
+        </Text>
+      </TouchableOpacity>
+    )}
       <Text style={styles.label}>Allow Substitutions?</Text>
       <Switch
           trackColor={{false: colors.border, true: colors.primary}}
@@ -317,6 +395,14 @@ export const AddItemScreen = () => {
           <Text style={styles.btnText}>Save Item</Text>
         )}
       </TouchableOpacity>
+
+      <ProductMatchModal
+        visible={matchModalVisible}
+        searchQuery={lastSearchQuery}
+        candidates={matchCandidates}
+        onSelect={applyMatchToMissingFields}
+        onClose={() => setMatchModalVisible(false)}
+      />
     </KeyboardAwareScrollView>
   );
 };
@@ -388,4 +474,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   imageBtnText: { fontSize: 16, fontWeight: '600', color: colors.textDim },
   image: { width: '100%', height: '100%' },
   scrollContent: { padding: 20, paddingBottom: 40 },
+  autoFillBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  borderWidth: 1,
+  borderRadius: 10,
+  paddingVertical: 10,
+  paddingHorizontal: 14,
+  marginTop: 8,
+  marginBottom: 12,
+},
+autoFillText: {
+  fontSize: 13,
+  fontWeight: '600',
+},
 });

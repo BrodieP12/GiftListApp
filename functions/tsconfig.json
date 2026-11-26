@@ -1,10 +1,6 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "baseUrl": ".",
-    "paths": {
-      "@posthog/ai/gemini": ["node_modules/@posthog/ai/dist/gemini/index.d.ts"]
-    },
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "outDir": "lib",

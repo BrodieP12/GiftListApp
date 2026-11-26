@@ -20,12 +20,13 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { PostHogProvider } from 'posthog-react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { usePostHog } from 'posthog-react-native';
 
 import { useAuth } from '../hooks/useAuth';
+import { NotificationProvider } from '../hooks/useNotifications';
 import { useAppTheme } from '../theme/ThemeContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { CreateProfile } from '../screens/CreateProfile';
@@ -34,10 +35,11 @@ import { ListDetailScreen } from '../screens/ListDetailScreen';
 import { AddItemScreen } from '../screens/AddItemScreen';
 import { ListEditScreen } from '../screens/ListEditScreen';
 import { UserProfileScreen } from '../screens/UserProfileScreen';
+import { AccountSettingsScreen } from '../screens/AccountSettingsScreen';
+import { NotificationSettingsScreen } from '../screens/NotificationSettingsScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { ConversationScreen } from '../screens/ConversationScreen';
-import { posthog } from '../config/posthog';
 
 /** Screens available before the user is signed in. */
 export type AuthStackParamList = {
@@ -56,9 +58,12 @@ export type AppStackParamList = {
   AddItem: { listId: string };
   ListEdit: { listId: string };
   UserProfileScreen: undefined;
+  AccountSettings: undefined;
+  NotificationSettings: undefined;
   Friends: undefined;
   Conversations: undefined;
   Conversation: { conversationId: string };
+  MessagesTab: { screen: string; params?: any };
 };
 
 export type TabParamList = {
@@ -119,6 +124,16 @@ const MessagesStack = () => (
 const ProfileStack = () => (
   <AppStack.Navigator>
     <AppStack.Screen name="UserProfileScreen" component={UserProfileScreen} options={{ title: 'Profile' }} />
+    <AppStack.Screen
+      name="AccountSettings"
+      component={AccountSettingsScreen}
+      options={{ title: 'Store Preferences' }}
+    />
+    <AppStack.Screen
+      name="NotificationSettings"
+      component={NotificationSettingsScreen}
+      options={{ title: 'Notification Preferences' }}
+    />
   </AppStack.Navigator>
 );
 
@@ -166,7 +181,20 @@ const AppTabs = () => {
       <Tab.Screen name="ListsTab" component={ListsStack} options={{ tabBarLabel: 'Lists' }} />
       <Tab.Screen name="FriendsTab" component={FriendsStack} options={{ tabBarLabel: 'Friends' }} />
       <Tab.Screen name="MessagesTab" component={MessagesStack} options={{ tabBarLabel: 'Messages' }} />
-      <Tab.Screen name="ProfileTab" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
+      <Tab.Screen
+        name="ProfileTab"
+        component={ProfileStack}
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'UserProfileScreen';
+          return {
+            tabBarLabel: 'Profile',
+            tabBarStyle:
+              routeName === 'AccountSettings' || routeName === 'NotificationSettings'
+                ? { display: 'none' }
+                : { backgroundColor: colors.card, borderTopColor: colors.border },
+          };
+        }}
+      />
     </Tab.Navigator>
   );
 };
@@ -182,6 +210,8 @@ const AppTabs = () => {
 export const RootNavigator = () => {
   const { user, loading } = useAuth();
   const { isDark, colors } = useAppTheme();
+  const navigationRef = React.useRef<any>(null);
+  const posthog = usePostHog();
 
   if (loading) {
     return (
@@ -209,20 +239,20 @@ export const RootNavigator = () => {
 
   // The auth gate: signed-in users get the full tabbed app; anyone else
   // (including a just-signed-out user) is dropped back to the auth flow.
-  const navigator = user ? <AppTabs /> : <AuthNavigator />;
-
   return (
-    <NavigationContainer theme={navTheme}>
-      {posthog ? (
-        <PostHogProvider
-          client={posthog}
-          autocapture={{ captureScreens: false, captureTouches: true }}
-        >
-          {navigator}
-        </PostHogProvider>
-      ) : (
-        navigator
-      )}
+    <NavigationContainer 
+      theme={navTheme}
+      ref={navigationRef}
+      onReady={() => {
+        posthog?.screen(navigationRef.current?.getCurrentRoute()?.name);
+      }}
+      onStateChange={async () => {
+        posthog?.screen(navigationRef.current?.getCurrentRoute()?.name);
+      }}
+    >
+      <NotificationProvider navigationRef={navigationRef}>
+        {user ? <AppTabs /> : <AuthNavigator />}
+      </NotificationProvider>
     </NavigationContainer>
   );
 };

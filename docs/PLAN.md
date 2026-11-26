@@ -1,41 +1,21 @@
-# Codebase Audit Plan: GiftListApp
+# App Setup and Verification Plan
 
-## 1. Objective
-Conduct a comprehensive review of the GiftListApp codebase to identify bugs, bad coding practices, and potential improvements. The findings will be compiled into a unified Audit Report document to guide future bug fixes, refactoring, and code quality enhancements.
+## 1. Emulator Verification
+- Ensure the newly created Android emulator (`Stable_Phone_API_31`) is fully booted and running.
 
-## 2. Codebase Overview
-- **App Framework**: React Native + Expo
-- **Backend/Services**: Firebase (Authentication, Firestore, Cloud Functions)
-- **Primary Directories**:
-  - `src/`: Frontend codebase containing `components`, `screens`, `services`, `navigation`, `hooks`, `theme`, and `types`.
-  - `functions/`: Backend codebase containing Firebase Cloud Functions (e.g., `createList.ts`, `productExtractor.ts`, `receiptProcessor.ts`).
+## 2. Build and Install App
+- Execute `npx expo run:android` in the project root (`c:\Users\Brodie\Downloads\GiftListApp-main`).
+- This step is critical because `posthog-react-native` requires native modules, which means a custom development build (Expo dev client) must be compiled and installed on the emulator.
+- Monitor the output to ensure the Android build succeeds and the app is installed onto the emulator.
 
-## 3. Phase 2: Audit Strategy and Execution
-To ensure a thorough audit, the review will be divided among three specialized agents in Phase 2. Each agent will evaluate their specific domain, identify bugs and poor practices, and append their findings to a unified `docs/AuditReport.md` document.
+## 3. Metro Bundler / Server Start
+- `npx expo run:android` typically starts the Metro bundler. If it is running, keep it active.
+- If it did not start or needs to be restarted, run `npx expo start --dev-client` (or similar command to start the bundler for the dev build).
 
-### **Agent 1: Frontend Specialist**
-**Focus Areas:**
-- **React/React Native Best Practices**: Review component structure, state management, custom hooks, and rendering performance.
-- **UI/UX & Navigation**: Assess responsive design, styling consistency, and navigation patterns.
-- **Error Handling**: Evaluate frontend error boundaries and user-facing error messages.
-- **Target Directories**: `src/screens/`, `src/components/`, `src/navigation/`, `src/hooks/`, `src/theme/`, `App.tsx`
+## 4. TypeScript Verification
+- Run `npx tsc --noEmit` (or whatever the project's typecheck script is) in the project root.
+- Ensure that there are zero TypeScript compilation errors, particularly relating to the recent PostHog configuration changes in `AppNavigator.tsx` and `useAuth.ts`.
 
-### **Agent 2: Backend Specialist**
-**Focus Areas:**
-- **Cloud Functions**: Analyze business logic, performance, and error handling in Firebase Cloud Functions.
-- **Data Modeling**: Evaluate Firestore data structures, queries, and efficiency.
-- **Frontend Services Integration**: Review how the frontend interacts with backend endpoints and third-party APIs.
-- **Target Directories**: `functions/src/`, `src/services/` (e.g., `FirebaseService.ts`, `ListService.ts`), `src/api/`
-
-### **Agent 3: Security Auditor**
-**Focus Areas:**
-- **Authentication & Authorization**: Review login flows, session management, and role-based access controls.
-- **Firebase Security**: Analyze Firestore security rules and Cloud Function endpoint security.
-- **Data Privacy & Secrets**: Ensure sensitive user data is handled properly and no secrets/API keys are exposed or hardcoded.
-- **Target Directories**: `src/services/AuthService.ts`, `firebase.json`, `.firebaserc`, and `.env` implementations.
-
-## 4. Next Steps
-1. Request approval for this audit plan from the user.
-2. Upon user approval, transition to Phase 2 and dispatch the Frontend, Backend, and Security agents.
-3. The agents will execute their reviews in parallel and compile their detailed findings into `docs/AuditReport.md`.
-4. Review the final report to plan and prioritize remediation efforts.
+## 5. Application Verification
+- Confirm that the app launches successfully on the Android emulator and connects to the Metro bundler without runtime errors or crashes.
+- (Optional but recommended) Briefly check the emulator logcat or Metro logs for any obvious PostHog initialization issues.

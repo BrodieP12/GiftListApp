@@ -2,9 +2,9 @@
 -- Item image storage
 -- =============================================
 -- Bucket for gift-item photos uploaded from AddItemScreen. Images are
--- moderated for NSFW content by the `moderate-and-upload-image` Edge
+-- moderated for NSFW content by the `moderation` / `moderate-and-upload-image` Edge
 -- Function BEFORE they ever reach this bucket (see
--- supabase/functions/moderate-and-upload-image/index.ts) — the function
+-- supabase/functions/moderation/index.ts) — the function
 -- uploads using the service_role key, which bypasses RLS entirely.
 --
 -- Business rule: regular clients (anon/authenticated) must NEVER be able to

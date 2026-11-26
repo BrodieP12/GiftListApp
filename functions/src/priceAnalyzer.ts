@@ -1,9 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
-import {
-    createAiGenerationContext,
-    createVertexAIClient,
-    flushPostHog,
-} from "./aiObservability";
+import { GoogleGenAI } from "@google/genai";
 
 export const analyzePrice = onRequest(
     { timeoutSeconds: 60, memory: "512MiB" },
@@ -11,7 +7,11 @@ export const analyzePrice = onRequest(
         const { product, history } = req.body;
         
         try {
-            const ai = createVertexAIClient();
+            const ai = new GoogleGenAI({
+                vertexai: true,
+                project: process.env.GCLOUD_PROJECT,
+                location: process.env.FIREBASE_REGION || 'us-central1'
+            });
 
             const prompt = `
             You are an e-commerce pricing analyst. 
@@ -35,15 +35,12 @@ export const analyzePrice = onRequest(
                 config: {
                     temperature: 0.1,
                     responseMimeType: "application/json"
-                },
-                ...createAiGenerationContext(),
+                }
             });
 
             res.json({ success: true, analysis: JSON.parse(aiResponse.text || "{}") });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message });
-        } finally {
-            await flushPostHog();
         }
     }
 );
@@ -61,7 +58,11 @@ export const analyzePriceNoHistory = onRequest(
         }
         
         try {
-            const ai = createVertexAIClient();
+            const ai = new GoogleGenAI({
+                vertexai: true,
+                project: process.env.GCLOUD_PROJECT,
+                location: process.env.FIREBASE_REGION || 'us-central1'
+            });
 
             // The prompt now relies on the AI's market knowledge rather than a provided history array
             const prompt = `
@@ -96,8 +97,7 @@ export const analyzePriceNoHistory = onRequest(
                 config: {
                     temperature: 0.2, // Low temperature for more factual, grounded estimates
                     responseMimeType: "application/json"
-                },
-                ...createAiGenerationContext(),
+                }
             });
 
             let jsonText = aiResponse.text || "{}";
@@ -115,8 +115,6 @@ export const analyzePriceNoHistory = onRequest(
         } catch (error: any) {
             console.error("Price Analysis Error:", error);
             res.status(500).json({ success: false, error: error.message });
-        } finally {
-            await flushPostHog();
         }
     }
 );

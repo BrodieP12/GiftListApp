@@ -1,3 +1,5 @@
+import type { NotificationPreferences } from './notifications';
+
 /**
  * Domain model definitions for the Gift List app.
  *
@@ -32,6 +34,8 @@ export interface User {
   birthday: string | null; // ISO date string
   isPremium: boolean;
   createdAt: string | null; // ISO date string
+  preferredRetailers?: string[];
+  notificationPreferences?: NotificationPreferences;
 
   /** Child-safety/compliance fields required before a minor can use sharing features. */
   minorProtection: {
@@ -66,7 +70,11 @@ export interface GiftList {
   ownerId: string;
   title: string;
   isPrivate: boolean;
+  isArchived: boolean;
+  archivedAt?: string| null;
   shareCode?: string | null;
+  inheritStorePreferences?: boolean;
+  preferredRetailers?: string[] | null;
   createdAt: string | null;
   updatedAt?: string | null;
 }
@@ -179,6 +187,7 @@ export interface UserProfile {
   givenName: string;
   familyName: string;
   photoURL: string | null;
+  preferredRetailers?: string[];
 }
 
 /**

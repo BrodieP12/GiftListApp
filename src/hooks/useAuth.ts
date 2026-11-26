@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import { User } from '../types/models';
+import { NotificationPreferences } from '../types/notifications';
 import { UserService, createDefaultUser } from '../services/UserService';
 import { CrashLogger } from '../services/LoggingService';
-import { posthog } from '../config/posthog';
+import { usePostHog } from 'posthog-react-native';
 
 /**
  * Auth state/context module.
@@ -37,6 +38,8 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   logout: () => Promise<void>;
+  updateUserPreferences: (retailers: string[]) => void;
+  updateNotificationPreferences: (preferences: NotificationPreferences) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -44,6 +47,8 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   logout: async () => {},
+  updateUserPreferences: () => {},
+  updateNotificationPreferences: () => {},
 });
 
 /**
@@ -69,35 +74,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const identifiedUserId = useRef<string | null>(null);
-
-  const identifySessionUser = (session: Session) => {
-    const { id, email } = session.user;
-
-    // getSession and Supabase's initial auth event can both report the same
-    // session. Identify once per signed-in user rather than on token refresh.
-    if (!posthog || identifiedUserId.current === id) return;
-
-    posthog.identify(id, email ? { email } : undefined);
-    identifiedUserId.current = id;
-  };
-
-  const clearPostHogIdentity = () => {
-    posthog?.reset();
-    identifiedUserId.current = null;
-  };
+  const posthog = usePostHog();
 
   useEffect(() => {
     // Load initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) {
-        identifySessionUser(session);
-        loadProfile(session.user.id, session.user.email ?? '');
-      } else {
-        clearPostHogIdentity();
-        setLoading(false);
-      }
+      if (session) loadProfile(session.user.id, session.user.email ?? '');
+      else setLoading(false);
     });
 
     // Listen for auth changes. This single listener covers sign-in,
@@ -107,10 +91,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-        identifySessionUser(session);
         loadProfile(session.user.id, session.user.email ?? '');
       } else {
-        clearPostHogIdentity();
         setUser(null);
         setLoading(false);
       }
@@ -139,6 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await UserService.createUserProfile(profile);
       }
       setUser(profile);
+      posthog?.identify(uid, { email, name: profile.displayName });
     } catch (error) {
       CrashLogger.error(error, 'AuthProvider.loadProfile');
       setUser(null);
@@ -148,18 +131,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Signs out of Supabase Auth. Intentionally does not clear `user`/
-  // `session` itself — the `onAuthStateChange` listener above receives
+  // `session` itself - the `onAuthStateChange` listener above receives
   // the resulting sign-out event and clears local state there, so there
   // is a single code path that reacts to "no session" regardless of
   // whether it was triggered by this call or by an external event (e.g.
   // token invalidated, signed out in another tab).
   const logout = async () => {
+    posthog?.reset();
     await supabase.auth.signOut();
+  };
+
+  const updateUserPreferences = (retailers: string[]) => {
+    setUser((prev) => (prev ? { ...prev, preferredRetailers: retailers } : null));
+  };
+
+  const updateNotificationPreferences = (notificationPreferences: NotificationPreferences) => {
+    setUser((prev) => (prev ? { ...prev, notificationPreferences } : null));
   };
 
   return React.createElement(
     AuthContext.Provider,
-    { value: { user, session, loading, logout } },
+    { value: { user, session, loading, logout, updateUserPreferences, updateNotificationPreferences } },
     children
   );
 };
