@@ -14,6 +14,8 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftListRow } from '../components/lists/GiftListRow';
 import { ConfirmationModal } from '../components/modals/Confirmation';
 import { CrashLogger } from '../services/LoggingService';
+import { posthog } from '../config/posthog';
+import { PostHogLogger } from '../services/PostHogLogger';
 
 /**
  * DashboardScreen
@@ -72,6 +74,8 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     setCreateLoading(true);
     try {
       const result = await createList(name, isSharable);
+      posthog?.capture('list_created', { is_shareable: isSharable });
+      PostHogLogger.info('gift list created', { is_shareable: isSharable });
       setCreateModalVisible(false);
       if (result.shareCode) {
         setPendingShareCode(result.shareCode);
@@ -98,6 +102,8 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     setJoinLoading(true);
     try {
       await joinList(joinCode.trim().toUpperCase());
+      posthog?.capture('list_joined');
+      PostHogLogger.info('gift list joined');
       setJoinModalVisible(false);
       setJoinCode('');
       Alert.alert('Joined!', 'You now have access to that list.');
@@ -121,6 +127,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     if (!deleteTargetId) return;
     try {
       await deleteList(deleteTargetId);
+      posthog?.capture('list_deleted');
     } catch (error) {
       CrashLogger.error(error, 'DashboardScreen.deleteList');
       Alert.alert('Error', 'Failed to delete list');

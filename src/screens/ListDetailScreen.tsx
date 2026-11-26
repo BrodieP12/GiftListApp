@@ -15,6 +15,7 @@ import { CrashLogger } from '../services/LoggingService';
 import { GiftItemUI, ItemClaim } from '../types/models';
 import { ConfirmationModal } from '../components/modals/Confirmation';
 import { ListService } from '../services/ListService';
+import { posthog } from '../config/posthog';
 
 /**
  * ListDetailScreen
@@ -76,12 +77,22 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
     if (!deleteTargetId) return;
     try {
       await ListService.deleteItem(listId, deleteTargetId);
+      posthog?.capture('item_deleted');
     } catch (error) {
       CrashLogger.error(error);
       Alert.alert('Error', 'Failed to delete item');
     } finally {
       setConfirmVisible(false);
       setDeleteTargetId(null);
+    }
+  };
+
+  const handleClaimToggle = async (itemId: string, currentClaimer: string | null) => {
+    const succeeded = await handleToggleClaim(itemId, currentClaimer);
+    if (succeeded) {
+      posthog?.capture('item_claim_toggled', {
+        action: currentClaimer === currentUserId ? 'unclaimed' : 'claimed',
+      });
     }
   };
   // Removed obsolete dashboard components
@@ -125,7 +136,7 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
                 onDelete={handleDeletePress}
                 currentUserId={currentUserId}
                 isOwner={isOwner}
-                onToggleClaim={handleToggleClaim}
+                onToggleClaim={handleClaimToggle}
             />
           )}
           ListEmptyComponent={
@@ -159,7 +170,7 @@ export const ListDetailScreen = ({ route, navigation }: Props) => {
         isOwner={isOwner}
         currentUserId={currentUserId}
         onClose={() => setSelectedItem(null)}
-        onToggleClaim={handleToggleClaim}
+        onToggleClaim={handleClaimToggle}
       />
     </SafeAreaView>
   );

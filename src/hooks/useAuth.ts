@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import { User } from '../types/models';
 import { UserService, createDefaultUser } from '../services/UserService';
 import { CrashLogger } from '../services/LoggingService';
+import { posthog } from '../config/posthog';
 
 /**
  * Auth state/context module.
@@ -68,10 +69,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const identifiedUserId = useRef<string | null>(null);
+
+  // This is the single identity boundary for the client. The ref prevents
+  // Supabase's initial-session and token-refresh notifications from issuing
+  // duplicate identify calls for the same person.
+  const syncPostHogIdentity = (nextSession: Session | null) => {
+    const nextUserId = nextSession?.user.id ?? null;
+
+    if (!nextUserId) {
+      if (identifiedUserId.current) {
+        posthog?.reset();
+        identifiedUserId.current = null;
+      }
+      return;
+    }
+
+    if (identifiedUserId.current === nextUserId) return;
+
+    // A direct account switch must not retain the previous user's identity.
+    if (identifiedUserId.current) posthog?.reset();
+
+    const email = nextSession.user.email;
+    posthog?.identify(
+      nextUserId,
+      email ? { $set: { email } } : undefined,
+    );
+    identifiedUserId.current = nextUserId;
+  };
 
   useEffect(() => {
     // Load initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      syncPostHogIdentity(session);
       setSession(session);
       if (session) loadProfile(session.user.id, session.user.email ?? '');
       else setLoading(false);
@@ -82,6 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // sync with Supabase Auth without any screen having to poll or
     // manually re-check auth state.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncPostHogIdentity(session);
       setSession(session);
       if (session) {
         loadProfile(session.user.id, session.user.email ?? '');

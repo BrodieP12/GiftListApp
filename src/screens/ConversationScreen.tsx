@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useMessages } from '../hooks/useConversations';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 import { Message } from '../types/models';
+import { posthog } from '../config/posthog';
 
 /**
  * ConversationScreen
@@ -74,6 +75,7 @@ export const ConversationScreen = ({ route }: Props) => {
     setDraft('');
     try {
       await sendMessage(user.uid, text);
+      posthog?.capture('message_sent');
     } finally {
       setSending(false);
     }

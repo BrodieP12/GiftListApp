@@ -17,10 +17,11 @@
  * tab bar) matches the app's light/dark theme rather than react-navigation's
  * defaults.
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { PostHogProvider } from 'posthog-react-native';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 
@@ -36,6 +37,7 @@ import { UserProfileScreen } from '../screens/UserProfileScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { ConversationScreen } from '../screens/ConversationScreen';
+import { posthog } from '../config/posthog';
 
 /** Screens available before the user is signed in. */
 export type AuthStackParamList = {
@@ -180,6 +182,8 @@ const AppTabs = () => {
 export const RootNavigator = () => {
   const { user, loading } = useAuth();
   const { isDark, colors } = useAppTheme();
+  const navigationRef = useRef<any>(null);
+  const routeNameRef = useRef<string | undefined>(undefined);
 
   if (loading) {
     return (
@@ -207,9 +211,35 @@ export const RootNavigator = () => {
 
   // The auth gate: signed-in users get the full tabbed app; anyone else
   // (including a just-signed-out user) is dropped back to the auth flow.
+  const navigator = user ? <AppTabs /> : <AuthNavigator />;
+
   return (
-    <NavigationContainer theme={navTheme}>
-      {user ? <AppTabs /> : <AuthNavigator />}
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navTheme}
+      onReady={() => {
+        routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name;
+      }}
+      onStateChange={() => {
+        const previousScreen = routeNameRef.current;
+        const currentScreen = navigationRef.current?.getCurrentRoute()?.name;
+
+        if (currentScreen && currentScreen !== previousScreen) {
+          posthog?.screen(currentScreen, { previous_screen: previousScreen });
+        }
+        routeNameRef.current = currentScreen;
+      }}
+    >
+      {posthog ? (
+        <PostHogProvider
+          client={posthog}
+          autocapture={{ captureScreens: false, captureTouches: true }}
+        >
+          {navigator}
+        </PostHogProvider>
+      ) : (
+        navigator
+      )}
     </NavigationContainer>
   );
 };
