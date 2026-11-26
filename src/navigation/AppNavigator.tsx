@@ -17,7 +17,7 @@
  * tab bar) matches the app's light/dark theme rather than react-navigation's
  * defaults.
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, DefaultTheme, DarkTheme, getFocusedRouteNameFromRoute } from '@react-navigation/native';
@@ -40,6 +40,7 @@ import { NotificationSettingsScreen } from '../screens/NotificationSettingsScree
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { ConversationScreen } from '../screens/ConversationScreen';
+import { posthog } from '../config/posthog';
 
 /** Screens available before the user is signed in. */
 export type AuthStackParamList = {
@@ -239,6 +240,8 @@ export const RootNavigator = () => {
 
   // The auth gate: signed-in users get the full tabbed app; anyone else
   // (including a just-signed-out user) is dropped back to the auth flow.
+  const navigator = user ? <AppTabs /> : <AuthNavigator />;
+
   return (
     <NavigationContainer 
       theme={navTheme}

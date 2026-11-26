@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import { User } from '../types/models';
@@ -79,6 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     // Load initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      syncPostHogIdentity(session);
       setSession(session);
       if (session) loadProfile(session.user.id, session.user.email ?? '');
       else setLoading(false);
@@ -89,6 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // sync with Supabase Auth without any screen having to poll or
     // manually re-check auth state.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncPostHogIdentity(session);
       setSession(session);
       if (session) {
         loadProfile(session.user.id, session.user.email ?? '');

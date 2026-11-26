@@ -111,16 +111,18 @@ export const useListDetail = (
    * branch to take.
    */
   const handleToggleClaim = async (itemId: string, currentClaimer: string | null) => {
-    if (!currentUserId) return;
+    if (!currentUserId) return false;
     try {
       if (currentClaimer === currentUserId) {
         await ClaimService.unclaimItem(itemId);
       } else {
         await ClaimService.claimItem(itemId, currentUserId, ownerId, listId);
       }
+      return true;
     } catch (err) {
       CrashLogger.error(err, 'useListDetail.handleToggleClaim');
       setError(err instanceof Error ? err : new Error('Could not update claim.'));
+      return false;
     }
   };
 

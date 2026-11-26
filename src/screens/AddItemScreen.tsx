@@ -273,6 +273,12 @@ export const AddItemScreen = () => {
         listId,
         imageUri: uploadedImageUrl,
       });
+      posthog?.capture('item_created', {
+        has_image: Boolean(uploadedImageUrl),
+        has_product_url: Boolean(url),
+        has_price: Boolean(price),
+        allows_substitutions: substitutions,
+      });
       navigation.goBack();
     } catch (e) {
       // @ts-ignore

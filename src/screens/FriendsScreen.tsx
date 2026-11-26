@@ -12,6 +12,7 @@ import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 import { Friend, UserProfile } from '../types/models';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AppStackParamList } from '../navigation/AppNavigator';
+import { posthog } from '../config/posthog';
 
 /**
  * FriendsScreen
@@ -84,6 +85,7 @@ export const FriendsScreen = ({ navigation }: { navigation: NavProp }) => {
   const handleSendRequest = async (targetId: string) => {
     try {
       await sendRequest(targetId);
+      posthog?.capture('friend_request_sent');
       Alert.alert('Request Sent', 'Friend request sent!');
       setSearchResults([]);
       setSearchQuery('');
@@ -100,6 +102,15 @@ export const FriendsScreen = ({ navigation }: { navigation: NavProp }) => {
    * it through the MessagesTab nested navigator — see the screen-level doc
    * comment above for why the nested `navigate` call is needed here.
    */
+  const handleAcceptRequest = async (requestId: string) => {
+    try {
+      await acceptRequest(requestId);
+      posthog?.capture('friend_request_accepted');
+    } catch {
+      Alert.alert('Error', 'Could not accept friend request.');
+    }
+  };
+
   const handleMessage = async (friendUserId: string) => {
     try {
       const convId = await openConversation(friendUserId);
@@ -127,7 +138,7 @@ export const FriendsScreen = ({ navigation }: { navigation: NavProp }) => {
           </View>
           {!isRequester && (
             <View style={styles.rowActions}>
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => acceptRequest(item.id)}>
+              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.primary }]} onPress={() => handleAcceptRequest(item.id)}>
                 <FontAwesome5 name="check" size={14} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.border }]} onPress={() => declineRequest(item.id)}>

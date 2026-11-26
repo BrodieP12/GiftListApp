@@ -1,5 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { GoogleGenAI } from "@google/genai";
+import { createAiObservabilityContext, createGeminiClient, flushPostHog } from "./ai";
 import * as cheerio from "cheerio";
 
 export const extractProduct = onRequest(
@@ -63,11 +63,8 @@ export const extractProduct = onRequest(
             });
 
             // 2. Process with Firebase Vertex AI
-            const ai = new GoogleGenAI({
-                vertexai: true,
-                project: process.env.GCLOUD_PROJECT,
-                location: process.env.FIREBASE_REGION || 'us-central1'
-            });
+            const ai: any = createGeminiClient();
+            const aiObservability = createAiObservabilityContext();
 
             const prompt = `
             Analyze this web page metadata to extract E-COMMERCE PRODUCT information.
@@ -102,7 +99,8 @@ export const extractProduct = onRequest(
                 config: {
                     temperature: 0.1,
                     responseMimeType: "application/json"
-                }
+                },
+                ...aiObservability
             });
 
             res.json({ success: true, product: JSON.parse(aiResponse.text || "{}"), source: url });
@@ -112,6 +110,8 @@ export const extractProduct = onRequest(
                  return;
             }
             res.status(500).json({ success: false, error: error.message });
+        } finally {
+            await flushPostHog();
         }
     }
 );

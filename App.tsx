@@ -4,7 +4,6 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { PostHogProvider } from 'posthog-react-native';
 import { AuthProvider } from './src/hooks/useAuth';
 import { RootNavigator } from './src/navigation/AppNavigator';
 import { FeedbackTrigger } from './src/components/common/FeedbackTrigger';

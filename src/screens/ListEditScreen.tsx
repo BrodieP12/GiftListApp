@@ -160,6 +160,7 @@ export const ListEditScreen = () => {
         inheritStorePreferences: inheritStores,
         preferredRetailers: inheritStores ? null : selectedRetailers,
       });
+      posthog?.capture('list_updated', { is_private: isPrivate });
       Alert.alert('Success', 'List updated successfully');
       navigation.goBack();
     } catch (error) {
@@ -189,6 +190,7 @@ export const ListEditScreen = () => {
   const copyToClipboard = async () => {
     if (list?.shareCode) {
       await Clipboard.setStringAsync(list.shareCode);
+      posthog?.capture('share_code_copied');
       Alert.alert('Copied', 'Share code copied to clipboard');
     }
   };

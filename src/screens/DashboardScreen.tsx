@@ -15,6 +15,8 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftListRow } from '../components/lists/GiftListRow';
 import { ConfirmationModal } from '../components/modals/Confirmation';
 import { CrashLogger } from '../services/LoggingService';
+import { posthog } from '../config/posthog';
+import { PostHogLogger } from '../services/PostHogLogger';
 
 /**
  * DashboardScreen
@@ -73,6 +75,8 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     setCreateLoading(true);
     try {
       const result = await createList(name, isSharable);
+      posthog?.capture('list_created', { is_shareable: isSharable });
+      PostHogLogger.info('gift list created', { is_shareable: isSharable });
       setCreateModalVisible(false);
       if (result.shareCode) {
         setPendingShareCode(result.shareCode);
