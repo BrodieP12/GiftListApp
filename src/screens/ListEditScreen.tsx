@@ -9,7 +9,7 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { ScrollView } from 'react-native-gesture-handler';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -22,8 +22,8 @@ import { GiftList, UserProfile } from '../types/models';
 import { RouteProp } from '@react-navigation/native';
 import { AppStackParamList } from '../navigation/AppNavigator';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
-import {CrashLogger} from "../services/LoggingService"; // IMPORT THEME Context
-import { posthog } from '../config/posthog';
+import { CrashLogger } from "../services/LoggingService";
+import { SUPPORTED_RETAILERS, DEFAULT_PREFERRED_RETAILERS } from '../constants/retailers';
 
 /**
  * ListEditScreen
@@ -74,6 +74,8 @@ export const ListEditScreen = () => {
   // Form State
   const [title, setTitle] = useState('');
   const [isPrivate, setIsPrivate] = useState(true);
+  const [inheritStores, setInheritStores] = useState(true);
+  const [selectedRetailers, setSelectedRetailers] = useState<string[]>([]);
   const [participants, setParticipants] = useState<UserProfile[]>([]);
 
   /**
@@ -101,6 +103,14 @@ export const ListEditScreen = () => {
       setList(listData);
       setTitle(listData.title);
       setIsPrivate(listData.isPrivate);
+      setInheritStores(listData.inheritStorePreferences ?? true);
+      setSelectedRetailers(
+        listData.preferredRetailers && listData.preferredRetailers.length > 0
+          ? listData.preferredRetailers
+          : (user?.preferredRetailers && user.preferredRetailers.length > 0
+              ? user.preferredRetailers
+              : DEFAULT_PREFERRED_RETAILERS)
+      );
 
       // Load participants from list_members
       const { data: members } = await supabase
@@ -120,17 +130,21 @@ export const ListEditScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [listId, navigation]);
+  }, [listId, navigation, user]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
+  const toggleRetailer = (domain: string) => {
+    setSelectedRetailers((prev) =>
+      prev.includes(domain) ? prev.filter((d) => d !== domain) : [...prev, domain]
+    );
+  };
+
   /**
-   * Validates and persists title/privacy changes via
-   * `ListService.updateList`. Title is required (non-empty after trim);
-   * share-code generation/clearing when privacy is toggled is handled
-   * inside `ListService.updateList` itself, not in this handler.
+   * Validates and persists title/privacy/store changes via
+   * `ListService.updateList`.
    */
   const handleSave = async () => {
     if (!title.trim()) {
@@ -143,6 +157,8 @@ export const ListEditScreen = () => {
       await ListService.updateList(listId, {
         title: title.trim(),
         isPrivate: isPrivate,
+        inheritStorePreferences: inheritStores,
+        preferredRetailers: inheritStores ? null : selectedRetailers,
       });
       posthog?.capture('list_updated', { is_private: isPrivate });
       Alert.alert('Success', 'List updated successfully');
@@ -188,11 +204,14 @@ export const ListEditScreen = () => {
   }
 
   return (
-    <KeyboardAwareScrollView 
+    <ScrollView 
       style={styles.container} 
       contentContainerStyle={styles.content}
-      enableOnAndroid={true}
-      extraScrollHeight={20}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={true}
+      nestedScrollEnabled={true}
+      overScrollMode="always"
+      bounces={true}
     >
       <View style={styles.section}>
         <Text style={styles.label}>List Title</Text>
@@ -223,6 +242,68 @@ export const ListEditScreen = () => {
             thumbColor={'#fff'}
           />
         </View>
+      </View>
+
+      {/* Store Extractor Preferences Section */}
+      <View style={styles.section}>
+        <View style={styles.row}>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Text style={styles.label}>Store Search Preferences</Text>
+            <Text style={styles.subLabel}>
+              {inheritStores
+                ? 'Inheriting favorite stores from Account Settings'
+                : 'Custom store selection for this list'}
+            </Text>
+          </View>
+          <Switch
+            value={inheritStores}
+            onValueChange={setInheritStores}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={'#fff'}
+          />
+        </View>
+
+        {!inheritStores && (
+          <View style={styles.customStoresContainer}>
+            <Text style={styles.storeSelectPrompt}>
+              Choose which stores the product extractor prioritizes for gifts on this list:
+            </Text>
+            <View style={styles.chipsWrap}>
+              {SUPPORTED_RETAILERS.map((retailer) => {
+                const isSelected = selectedRetailers.includes(retailer.domain);
+                return (
+                  <TouchableOpacity
+                    key={retailer.domain}
+                    onPress={() => toggleRetailer(retailer.domain)}
+                    style={[
+                      styles.retailerChip,
+                      isSelected && {
+                        backgroundColor: colors.primary + '20',
+                        borderColor: colors.primary,
+                      },
+                    ]}
+                  >
+                    <FontAwesome5
+                      name={isSelected ? 'check-circle' : 'circle'}
+                      size={12}
+                      color={isSelected ? colors.primary : colors.textDim}
+                      style={{ marginRight: 6 }}
+                      solid={isSelected}
+                    />
+                    <Text
+                      style={[
+                        styles.retailerChipText,
+                        { color: isSelected ? colors.primary : colors.text },
+                      ]}
+                    >
+                      {retailer.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
       </View>
 
       {!isPrivate && list?.shareCode && (
@@ -274,7 +355,7 @@ export const ListEditScreen = () => {
           <Text style={styles.cancelLinkText}>Cancel</Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAwareScrollView>
+    </ScrollView>
   );
 };
 
@@ -284,8 +365,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
+    flexGrow: 1,
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   center: {
     flex: 1,
@@ -417,5 +499,35 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   cancelLinkText: {
     fontSize: 16,
     color: colors.textDim,
+  },
+  customStoresContainer: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  storeSelectPrompt: {
+    fontSize: 13,
+    color: colors.textDim,
+    marginBottom: 10,
+  },
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  retailerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  retailerChipText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 });

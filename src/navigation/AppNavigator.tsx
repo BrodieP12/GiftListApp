@@ -20,12 +20,13 @@
 import React, { useRef } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { PostHogProvider } from 'posthog-react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { usePostHog } from 'posthog-react-native';
 
 import { useAuth } from '../hooks/useAuth';
+import { NotificationProvider } from '../hooks/useNotifications';
 import { useAppTheme } from '../theme/ThemeContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { CreateProfile } from '../screens/CreateProfile';
@@ -34,6 +35,8 @@ import { ListDetailScreen } from '../screens/ListDetailScreen';
 import { AddItemScreen } from '../screens/AddItemScreen';
 import { ListEditScreen } from '../screens/ListEditScreen';
 import { UserProfileScreen } from '../screens/UserProfileScreen';
+import { AccountSettingsScreen } from '../screens/AccountSettingsScreen';
+import { NotificationSettingsScreen } from '../screens/NotificationSettingsScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { ConversationScreen } from '../screens/ConversationScreen';
@@ -56,9 +59,12 @@ export type AppStackParamList = {
   AddItem: { listId: string };
   ListEdit: { listId: string };
   UserProfileScreen: undefined;
+  AccountSettings: undefined;
+  NotificationSettings: undefined;
   Friends: undefined;
   Conversations: undefined;
   Conversation: { conversationId: string };
+  MessagesTab: { screen: string; params?: any };
 };
 
 export type TabParamList = {
@@ -119,6 +125,16 @@ const MessagesStack = () => (
 const ProfileStack = () => (
   <AppStack.Navigator>
     <AppStack.Screen name="UserProfileScreen" component={UserProfileScreen} options={{ title: 'Profile' }} />
+    <AppStack.Screen
+      name="AccountSettings"
+      component={AccountSettingsScreen}
+      options={{ title: 'Store Preferences' }}
+    />
+    <AppStack.Screen
+      name="NotificationSettings"
+      component={NotificationSettingsScreen}
+      options={{ title: 'Notification Preferences' }}
+    />
   </AppStack.Navigator>
 );
 
@@ -166,7 +182,20 @@ const AppTabs = () => {
       <Tab.Screen name="ListsTab" component={ListsStack} options={{ tabBarLabel: 'Lists' }} />
       <Tab.Screen name="FriendsTab" component={FriendsStack} options={{ tabBarLabel: 'Friends' }} />
       <Tab.Screen name="MessagesTab" component={MessagesStack} options={{ tabBarLabel: 'Messages' }} />
-      <Tab.Screen name="ProfileTab" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
+      <Tab.Screen
+        name="ProfileTab"
+        component={ProfileStack}
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'UserProfileScreen';
+          return {
+            tabBarLabel: 'Profile',
+            tabBarStyle:
+              routeName === 'AccountSettings' || routeName === 'NotificationSettings'
+                ? { display: 'none' }
+                : { backgroundColor: colors.card, borderTopColor: colors.border },
+          };
+        }}
+      />
     </Tab.Navigator>
   );
 };
@@ -182,8 +211,8 @@ const AppTabs = () => {
 export const RootNavigator = () => {
   const { user, loading } = useAuth();
   const { isDark, colors } = useAppTheme();
-  const navigationRef = useRef<any>(null);
-  const routeNameRef = useRef<string | undefined>(undefined);
+  const navigationRef = React.useRef<any>(null);
+  const posthog = usePostHog();
 
   if (loading) {
     return (
@@ -214,32 +243,19 @@ export const RootNavigator = () => {
   const navigator = user ? <AppTabs /> : <AuthNavigator />;
 
   return (
-    <NavigationContainer
-      ref={navigationRef}
+    <NavigationContainer 
       theme={navTheme}
+      ref={navigationRef}
       onReady={() => {
-        routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name;
+        posthog?.screen(navigationRef.current?.getCurrentRoute()?.name);
       }}
-      onStateChange={() => {
-        const previousScreen = routeNameRef.current;
-        const currentScreen = navigationRef.current?.getCurrentRoute()?.name;
-
-        if (currentScreen && currentScreen !== previousScreen) {
-          posthog?.screen(currentScreen, { previous_screen: previousScreen });
-        }
-        routeNameRef.current = currentScreen;
+      onStateChange={async () => {
+        posthog?.screen(navigationRef.current?.getCurrentRoute()?.name);
       }}
     >
-      {posthog ? (
-        <PostHogProvider
-          client={posthog}
-          autocapture={{ captureScreens: false, captureTouches: true }}
-        >
-          {navigator}
-        </PostHogProvider>
-      ) : (
-        navigator
-      )}
+      <NotificationProvider navigationRef={navigationRef}>
+        {user ? <AppTabs /> : <AuthNavigator />}
+      </NotificationProvider>
     </NavigationContainer>
   );
 };

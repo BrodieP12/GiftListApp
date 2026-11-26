@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { useAuth } from '../hooks/useAuth';
 import { useLists } from '../hooks/useLists';
@@ -10,6 +10,7 @@ import { AppStackParamList } from '../navigation/AppNavigator';
 import { Button } from '../components/common/Button';
 import { CreateListModal } from '../components/modals/CreateList';
 import { ShareCodeModal } from '../components/modals/ShareCodeModal';
+import { JoinListModal } from '../components/modals/JoinListModal';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftListRow } from '../components/lists/GiftListRow';
 import { ConfirmationModal } from '../components/modals/Confirmation';
@@ -46,7 +47,7 @@ type DashboardNavProp = StackNavigationProp<AppStackParamList, 'Dashboard'>;
 
 export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }) => {
   const { user } = useAuth();
-  const { ownedLists, sharedLists, loading, createList, deleteList, joinList } = useLists(user?.uid);
+  const { ownedLists, sharedLists, loading, createList, archiveList, deleteList, joinList } = useLists(user?.uid);
   const { colors } = useAppTheme();
 
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -55,11 +56,11 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
   const [pendingShareCode, setPendingShareCode] = useState('');
 
   const [joinModalVisible, setJoinModalVisible] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
 
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [archiveDeleteTargetId, setArchiveDeleteTargetId] = useState<string | null>(null);
+  const [confirmDeleteVisible1, setConfirmDeleteVisible1] = useState(false);
+  const [confirmDeleteVisible2, setConfirmDeleteVisible2] = useState(false);
 
   /**
    * Creates a new gift list owned by the current user via
@@ -97,15 +98,12 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
    * code surfaces the server's error message (or a generic fallback) rather
    * than failing silently.
    */
-  const handleJoinList = async () => {
-    if (!joinCode.trim()) return;
+  const handleJoinList = async (code: string) => {
+    if (!code.trim()) return;
     setJoinLoading(true);
     try {
-      await joinList(joinCode.trim().toUpperCase());
-      posthog?.capture('list_joined');
-      PostHogLogger.info('gift list joined');
+      await joinList(code.trim().toUpperCase());
       setJoinModalVisible(false);
-      setJoinCode('');
       Alert.alert('Joined!', 'You now have access to that list.');
     } catch (error) {
       Alert.alert('Error', (error as Error).message || 'Invalid share code.');
@@ -114,28 +112,42 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     }
   };
 
+
   // Stages a list for deletion and opens the confirmation modal; the actual
   // delete only happens in handleConfirmDelete after the user confirms, to
   // avoid an accidental tap destroying a list (deletion is irreversible and
   // cascades to its items/claims server-side).
   const handleDeletePress = (id: string) => {
-    setDeleteTargetId(id);
-    setConfirmVisible(true);
+    setArchiveDeleteTargetId(id);
+    setConfirmDeleteVisible1(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deleteTargetId) return;
+  const handleConfirmArchive = async () => {
+    if(!archiveDeleteTargetId) return;
     try {
-      await deleteList(deleteTargetId);
-      posthog?.capture('list_deleted');
+      await archiveList(archiveDeleteTargetId);
+    } catch (error) {
+      CrashLogger.error(error, 'DashboardScreen.archiveList');
+      Alert.alert('Error', 'Failed to archive list');
+    } finally {
+      setConfirmDeleteVisible1(false);
+      setArchiveDeleteTargetId(null);
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!archiveDeleteTargetId) return;
+    try {
+      await deleteList(archiveDeleteTargetId);
     } catch (error) {
       CrashLogger.error(error, 'DashboardScreen.deleteList');
       Alert.alert('Error', 'Failed to delete list');
     } finally {
-      setConfirmVisible(false);
-      setDeleteTargetId(null);
+      setConfirmDeleteVisible1(false);
+      setArchiveDeleteTargetId(null);
     }
   };
+
 
   const renderList = ({ item }: { item: GiftList }) => (
     <GiftListRow
@@ -173,7 +185,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
       ) : (
         <FlatList
           data={sections}
-          keyExtractor={(item, index) => index.toString()}
+          keyExtractor={(item) => item.type === 'list' ? item.data.id : `${item.type}-${item.label}`}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => {
             if (item.type === 'header') {
@@ -216,32 +228,23 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
       />
 
       {/* Join by Share Code Modal */}
-      <ConfirmationModal
+      <JoinListModal
         visible={joinModalVisible}
-        title="Join a List"
-        message=""
-        onConfirm={handleJoinList}
-        onCancel={() => { setJoinModalVisible(false); setJoinCode(''); }}
-        confirmText={joinLoading ? 'Joining...' : 'Join'}
-        customContent={
-          <TextInput
-            style={[styles.joinInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}
-            placeholder="Enter 7-digit code (e.g. ABC1234)"
-            placeholderTextColor={colors.textDim}
-            value={joinCode}
-            onChangeText={t => setJoinCode(t.toUpperCase())}
-            autoCapitalize="characters"
-            maxLength={7}
-          />
-        }
+        onClose={() => setJoinModalVisible(false)}
+        onJoin={handleJoinList}
+        loading={joinLoading}
       />
 
       <ConfirmationModal
-        visible={confirmVisible}
-        title="Delete List"
-        message="Are you sure you want to delete this list? This cannot be undone."
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setConfirmVisible(false)}
+        visible={confirmDeleteVisible1}
+        title="Archive or Delete List"
+        message="Would you like to archive this list or permanently delete it."
+        type="danger"
+        buttons={[
+          {text: 'Archive', onPress: () => handleConfirmArchive() },
+          {text: 'Delete', variant: 'danger', onPress: () => handleConfirmDelete() },
+          {text: 'Cancel', variant: 'cancel', onPress: () => setConfirmDeleteVisible1(false)}
+        ]}
       />
     </View>
   );
@@ -257,9 +260,5 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 30, width: 56, height: 56, borderRadius: 28,
     justifyContent: 'center', alignItems: 'center', elevation: 6,
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
-  },
-  joinInput: {
-    borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 18,
-    fontWeight: '700', textAlign: 'center', letterSpacing: 4, marginTop: 4,
   },
 });

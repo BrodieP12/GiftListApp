@@ -11,7 +11,7 @@
  * Shares the same "owner never sees claims" business rule as GiftItemRow:
  * the claim button is only rendered when `isOwner` is false.
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal, View, Text, Image, ScrollView, TouchableOpacity,
   StyleSheet, Linking, Pressable,
@@ -20,17 +20,6 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftItemUI, ItemClaim } from '../../types/models';
 import { useAppTheme } from '../../theme/ThemeContext';
 
-/**
- * Props for {@link ItemDetailModal}.
- *
- * - `item` is the item to show detail for; passing `null` hides the modal
- *   entirely (the component early-returns `null` in that case — see below).
- * - `isOwner`/`currentUserId` gate and personalize the claim button exactly
- *   as in `GiftItemRow`.
- * - `onToggleClaim` claims/unclaims the item; `onClose` is also called
- *   automatically right after a claim toggle (see below) so the sheet
- *   dismisses once the user acts.
- */
 interface Props {
   item: GiftItemUI | null;
   isOwner: boolean;
@@ -39,20 +28,17 @@ interface Props {
   onToggleClaim: (itemId: string, currentClaimer: string | null) => void;
 }
 
-/**
- * Full-detail bottom sheet for a gift item. Renders nothing when `item` is
- * `null` (see the early return below), which lets the parent screen simply
- * keep this component mounted and toggle `item` to open/close it.
- */
 export const ItemDetailModal = ({ item, isOwner, currentUserId, onClose, onToggleClaim }: Props) => {
   const { colors } = useAppTheme();
+  const [imageExpanded, setImageExpanded] = useState(false);
 
-  // No item selected -> render nothing (also implicitly closes the Modal,
-  // since `visible={!!item}` below would be false anyway).
+  useEffect(() => {
+    setImageExpanded(false);
+  }, [item?.id]);
+
+  // No item selected -> render nothing (hooks must stay above this line).
   if (!item) return null;
 
-  // `claimStatus` is expected to be null/undefined for the list owner (see
-  // file header) so these derived flags read as "unclaimed" for them.
   const claim = item.claimStatus as ItemClaim | null;
   const isClaimed = Boolean(claim?.claimedBy);
   const isClaimedByMe = claim?.claimedBy === currentUserId;
@@ -66,7 +52,12 @@ export const ItemDetailModal = ({ item, isOwner, currentUserId, onClose, onToggl
   };
 
   return (
-    <Modal visible={!!item} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={!!item}
+      transparent
+      animationType="slide"
+      onRequestClose={() => (imageExpanded ? setImageExpanded(false) : onClose())}
+    >
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={[styles.sheet, { backgroundColor: colors.card }]}>
         <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
@@ -75,7 +66,13 @@ export const ItemDetailModal = ({ item, isOwner, currentUserId, onClose, onToggl
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {item.imageUri ? (
-            <Image source={{ uri: item.imageUri }} style={styles.image} resizeMode="cover" />
+            <TouchableOpacity
+              style={styles.imageWrapper}
+              activeOpacity={0.9}
+              onPress={() => setImageExpanded(true)}
+            >
+              <Image source={{ uri: item.imageUri }} style={styles.image} resizeMode="cover" />
+            </TouchableOpacity>
           ) : (
             <View style={[styles.imagePlaceholder, { backgroundColor: colors.background }]}>
               <FontAwesome5 name="gift" size={48} color={colors.textDim} />
@@ -103,10 +100,6 @@ export const ItemDetailModal = ({ item, isOwner, currentUserId, onClose, onToggl
             </TouchableOpacity>
           )}
 
-          {/* Claim Action — hidden for the list owner (see file header).
-              Tapping it both toggles the claim and immediately closes the
-              sheet, since the resulting state change is reflected back in
-              the underlying list rather than in this modal. */}
           {!isOwner && (
             <TouchableOpacity
               style={[
@@ -126,6 +119,26 @@ export const ItemDetailModal = ({ item, isOwner, currentUserId, onClose, onToggl
           )}
         </ScrollView>
       </View>
+
+      {imageExpanded && !!item.imageUri && (
+        <Pressable
+          style={styles.fullscreenOverlay}
+          onPress={() => setImageExpanded(false)}
+        >
+          <TouchableOpacity
+            style={styles.fullscreenClose}
+            onPress={() => setImageExpanded(false)}
+            hitSlop={12}
+          >
+            <FontAwesome5 name="times" size={20} color="#fff" />
+          </TouchableOpacity>
+          <Image
+            source={{ uri: item.imageUri }}
+            style={styles.fullscreenImage}
+            resizeMode="contain"
+          />
+        </Pressable>
+      )}
     </Modal>
   );
 };
@@ -154,11 +167,14 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     alignItems: 'center',
   },
+  imageWrapper: {
+    width: '100%',
+    marginBottom: 16,
+  },
   image: {
     width: '100%',
     height: 220,
     borderRadius: 12,
-    marginBottom: 16,
   },
   imagePlaceholder: {
     width: '100%',
@@ -223,5 +239,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  fullscreenOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.94)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  fullscreenClose: {
+    position: 'absolute',
+    top: 48,
+    right: 20,
+    zIndex: 1000,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: '94%',
+    height: '82%',
   },
 });

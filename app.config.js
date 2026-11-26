@@ -1,9 +1,9 @@
-const { expo } = require('./app.json');
+const app = require('./app.json');
 
 module.exports = {
-  ...expo,
+  ...app.expo,
   extra: {
-    ...expo.extra,
+    ...app.expo.extra,
     posthogProjectToken: process.env.EXPO_PUBLIC_POSTHOG_KEY,
     posthogHost: process.env.EXPO_PUBLIC_POSTHOG_HOST,
   },

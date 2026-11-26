@@ -1,89 +1,1486 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="theme-color" content="#1e293b">
+  <title>Download GiftList App for Android</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #334155;
+      --primary: #15803d;
+      --primary-hover: #166534;
+      --primary-light: #dcfce7;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --warning-bg: #fef3c7;
+      --warning-border: #f59e0b;
+      --warning-text: #78350f;
+      --highlight: #facc15;
+      --border: #e2e8f0;
+      --radius: 18px;
+    }
 
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/12.11.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/12.11.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.11.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.6;
+      font-size: 19px;
+      padding: 16px 12px 60px;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 24px 12px 16px;
+    }
+
+    .app-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 76px;
+      height: 76px;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      border-radius: 20px;
+      font-size: 40px;
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Auto Download Alert */
+    .auto-download-notice {
+      background: #eff6ff;
+      border: 2px solid #bfdbfe;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin: 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 18px;
+      color: #1e40af;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 4px solid #93c5fd;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Primary Big Button */
+    .download-section {
+      margin: 18px 0 32px;
+      text-align: center;
+    }
+
+    .btn-download {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #ffffff;
+      text-decoration: none;
+      padding: 22px 24px;
+      border-radius: 22px;
+      font-size: 24px;
+      font-weight: 800;
+      box-shadow: 0 12px 28px rgba(22, 163, 74, 0.35);
+      border: 3px solid #86efac;
+      transition: transform 0.15s ease, background 0.15s ease;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .btn-download:active {
+      transform: scale(0.98);
+      background: #166534;
+    }
+
+    .btn-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-subtitle {
+      font-size: 16px;
+      font-weight: 500;
+      opacity: 0.92;
+      margin-top: 6px;
+    }
+
+    .download-tip {
+      font-size: 17px;
+      color: var(--text-muted);
+      margin-top: 12px;
+    }
+
+    /* Reassurance Banner */
+    .reassurance-banner {
+      background: var(--warning-bg);
+      border: 3px solid var(--warning-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+
+    .reassurance-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--warning-text);
+      margin-bottom: 8px;
+    }
+
+    .reassurance-body {
+      font-size: 18px;
+      color: #451a03;
+      line-height: 1.55;
+    }
+
+    /* Instructions Section */
+    .guide-title {
+      font-size: 26px;
+      font-weight: 800;
+      margin: 36px 0 20px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .step-number {
+      width: 44px;
+      height: 44px;
+      background: #2563eb;
+      color: #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .step-heading {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.3;
+    }
+
+    .step-text {
+      font-size: 19px;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      line-height: 1.55;
+    }
+
+    .highlight-action {
+      background: #fef08a;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 800;
+      color: #713f12;
+      border: 1px solid #facc15;
+    }
+
+    /* Mockups */
+    .mockup-container {
+      background: #0f172a;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+      margin-top: 14px;
+    }
+
+    .phone-dialog {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      color: #1e293b;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .dialog-icon {
+      font-size: 34px;
+      margin-bottom: 10px;
+    }
+
+    .dialog-title {
+      font-size: 21px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    .dialog-desc {
+      font-size: 17px;
+      color: #475569;
+      margin-bottom: 20px;
+      line-height: 1.45;
+    }
+
+    .dialog-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .mockup-btn {
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      border: none;
+      cursor: default;
+    }
+
+    .mockup-btn.ghost {
+      background: transparent;
+      color: #64748b;
+    }
+
+    .mockup-btn.tap-target {
+      background: #2563eb;
+      color: #ffffff;
+      position: relative;
+      box-shadow: 0 0 0 4px #facc15, 0 4px 12px rgba(37, 99, 235, 0.4);
+      animation: pulse 1.8s infinite;
+    }
+
+    .tap-target-pointer {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 19px;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 3px #facc15, 0 4px 12px rgba(37, 99, 235, 0.4); }
+      50% { box-shadow: 0 0 0 7px #facc15, 0 6px 18px rgba(37, 99, 235, 0.6); }
+      100% { box-shadow: 0 0 0 3px #facc15, 0 4px 12px rgba(37, 99, 235, 0.4); }
+    }
+
+    /* Notification banner mockup */
+    .noti-banner {
+      background: #1e293b;
+      color: #f8fafc;
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .noti-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .noti-check {
+      width: 32px;
+      height: 32px;
+      background: #16a34a;
+      color: #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .noti-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .noti-sub {
+      font-size: 15px;
+      color: #94a3b8;
+    }
+
+    /* Settings Toggle mockup */
+    .settings-mockup {
+      background: #f1f5f9;
+      border-radius: 14px;
+      padding: 16px;
+      border: 1px solid #cbd5e1;
+    }
+
+    .settings-header {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #cbd5e1;
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      padding: 14px 16px;
+      border-radius: 10px;
+    }
+
+    .toggle-pill {
+      background: #2563eb;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 0 0 3px #facc15;
+    }
+
+    /* Help Card */
+    .help-card {
+      background: #eff6ff;
+      border: 2px dashed #3b82f6;
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      text-align: center;
+      margin-top: 36px;
+    }
+
+    .help-card h3 {
+      font-size: 23px;
+      color: #1e3a8a;
+      margin-bottom: 10px;
+    }
+
+    .help-card p {
+      font-size: 18px;
+      color: #1e40af;
+      line-height: 1.5;
+    }
+
+    /* ---------------------------------------------------- */
+    /* DEVELOPER & BUILD ARCHIVE STYLES                     */
+    /* ---------------------------------------------------- */
+    .archive-section {
+      margin-top: 40px;
+    }
+
+    .archive-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 22px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    }
+
+    .archive-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .lock-badge {
+      width: 48px;
+      height: 48px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .archive-header h2 {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 2px;
+    }
+
+    .archive-header p {
+      font-size: 15px;
+      color: #64748b;
+    }
+
+    .auth-desc {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .webhook-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .auth-notice {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 15px;
+      margin-bottom: 16px;
+      line-height: 1.45;
+    }
+
+    .auth-notice.success {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      color: #166534;
+    }
+
+    .auth-notice.error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+
+    .verify-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .code-input {
+      letter-spacing: 6px;
+      font-size: 24px;
+      font-weight: 800;
+      text-align: center;
+      padding: 12px 16px;
+      border: 2px solid #cbd5e1;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 220px;
+      outline: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      color: #0f172a;
+    }
+
+    .code-input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #16a34a;
+      color: #ffffff;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #15803d;
+      transform: translateY(-1px);
+    }
+
+    /* Unlocked Archive List */
+    .archive-unlocked {
+      background: #ffffff;
+      border: 2px solid #86efac;
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      box-shadow: 0 8px 24px rgba(22, 163, 74, 0.12);
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .unlocked-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .verified-badge {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #86efac;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-ghost-sm {
+      background: transparent;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #64748b;
+      cursor: pointer;
+    }
+
+    .btn-ghost-sm:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    /* Build Item Card (matches user request) */
+    .build-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .build-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #f8fafc;
+      border: 1.5px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 18px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .build-item:hover {
+      transform: translateY(-2px);
+      border-color: #3b82f6;
+      background: #ffffff;
+      box-shadow: 0 6px 18px rgba(37, 99, 235, 0.1);
+    }
+
+    .build-icon-wrap {
+      flex-shrink: 0;
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .build-icon-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .build-middle {
+      flex: 1;
+      min-width: 0; /* Enables ellipsis truncation */
+      padding-right: 8px;
+    }
+
+    .build-item-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .build-changelog-preview {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .build-meta-right {
+      flex-shrink: 0;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .build-date {
+      font-size: 13px;
+      font-weight: 700;
+      color: #64748b;
+      white-space: nowrap;
+    }
+
+    .build-version-badge {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+
+    /* Modal Overlay & Dialog */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 9999;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border-radius: 24px;
+      max-width: 560px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      animation: modalSlide 0.2s ease-out;
+    }
+
+    @keyframes modalSlide {
+      from { transform: translateY(16px) scale(0.98); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 22px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      font-size: 20px;
+      color: #64748b;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+    }
+
+    .modal-close-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .modal-body {
+      padding: 22px;
+      overflow-y: auto;
+    }
+
+    .modal-changelog-content {
+      font-size: 15px;
+      color: #334155;
+      line-height: 1.6;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 10px;
+      white-space: pre-line;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      padding: 16px 22px;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+      flex-wrap: wrap;
+    }
+
+    .btn-modal-dl {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 800;
+      transition: background 0.15s ease, transform 0.1s ease;
+      min-width: 180px;
+    }
+
+    .btn-modal-dl.apk {
+      background: #16a34a;
+      color: #ffffff;
+    }
+
+    .btn-modal-dl.apk:hover {
+      background: #15803d;
+      transform: translateY(-1px);
+    }
+
+    .btn-modal-dl.aab {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .btn-modal-dl.aab:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .btn-size-tag {
+      background: rgba(255, 255, 255, 0.25);
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 16px;
+      color: #64748b;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 12px 10px 50px;
       }
-    </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
+      h1 {
+        font-size: 28px;
+      }
+      .btn-download {
+        font-size: 21px;
+        padding: 18px 16px;
+      }
+      .step-heading {
+        font-size: 20px;
+      }
+      .step-card {
+        padding: 18px 14px;
+      }
+      .build-item {
+        padding: 12px;
+        gap: 12px;
+      }
+      .build-icon-wrap {
+        width: 44px;
+        height: 44px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- Top Header -->
+    <header class="header">
+      <div class="app-badge">🎁</div>
+      <h1>GiftList App</h1>
+      <p class="subtitle">Official Family &amp; Friends Android Download</p>
+    </header>
+
+    <!-- Automatic Download Notice -->
+    <div class="auto-download-notice" id="autoDownloadNotice">
+      <div class="spinner"></div>
+      <div>
+        <strong>Starting your download automatically...</strong><br>
+        <span>Please look at the bottom or top of your screen.</span>
+      </div>
     </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+    <!-- Big Download Button -->
+    <div class="download-section">
+      <a href="GiftListApp.apk?v=1.0.13" download="GiftListApp.apk" class="btn-download" id="manualDownloadBtn">
+        <span class="btn-title">
+          <span>⬇️</span>
+          <span>Tap Here to Download</span>
+        </span>
+        <span class="btn-subtitle">GiftListApp.apk • Android • 104 MB</span>
+      </a>
+      <p class="download-tip">If the download didn't start automatically, tap the big green button above!</p>
+    </div>
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
+    <!-- Reassurance Banner -->
+    <div class="reassurance-banner">
+      <div class="reassurance-title">
+        <span>🛡️</span>
+        <span>Is this safe to install?</span>
+      </div>
+      <p class="reassurance-body">
+        <strong>Yes, 100%!</strong> This app was created personally by Brodie for family and friends. Because it comes directly from Brodie's server rather than the Google Play Store, Android will show a standard safety warning. That is completely normal. Just follow the steps below!
+      </p>
+    </div>
+
+    <h2 class="guide-title">
+      <span>📱</span>
+      <span>Easy Step-by-Step Guide</span>
+    </h2>
+
+    <!-- STEP 1 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-heading">Tap "Download anyway"</div>
+      </div>
+      <p class="step-text">
+        Your phone may pop up a box saying <em>"File might be harmful"</em>. 
+        Don't worry—tap <span class="highlight-action">Download anyway</span>.
+      </p>
+
+      <div class="mockup-container">
+        <div class="phone-dialog">
+          <div class="dialog-icon">⚠️</div>
+          <div class="dialog-title">File might be harmful</div>
+          <div class="dialog-desc">Do you want to download GiftListApp.apk anyway?</div>
+          <div class="dialog-buttons">
+            <button class="mockup-btn ghost">Cancel</button>
+            <button class="mockup-btn tap-target">Download anyway <span class="tap-target-pointer">👈 TAP THIS</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-heading">Tap "Open" when it finishes</div>
+      </div>
+      <p class="step-text">
+        Once the download is complete, a small bar will appear at the bottom or top of your screen. 
+        Tap <span class="highlight-action">Open</span>.
+      </p>
+
+      <div class="mockup-container">
+        <div class="noti-banner">
+          <div class="noti-content">
+            <div class="noti-check">✓</div>
+            <div>
+              <div class="noti-title">GiftListApp.apk</div>
+              <div class="noti-sub">Download complete</div>
+            </div>
+          </div>
+          <button class="mockup-btn tap-target">Open <span class="tap-target-pointer">👈 TAP THIS</span></button>
+        </div>
+      </div>
+      <p class="step-text" style="margin-top: 14px; font-size: 17px; color: #64748b;">
+        <em>💡 Tip: If you missed it, swipe down from the very top edge of your screen with your finger to see your downloads, then tap "GiftListApp.apk".</em>
+      </p>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <div class="step-heading">Allow permission if asked</div>
+      </div>
+      <p class="step-text">
+        If your phone asks for permission to install, tap <span class="highlight-action">Settings</span>, 
+        flip the switch to <span class="highlight-action">Allow from this source (ON)</span>, 
+        then press the <strong>back arrow (&lt;)</strong> on your phone.
+      </p>
+
+      <div class="mockup-container">
+        <div class="phone-dialog" style="margin-bottom: 12px;">
+          <div class="dialog-title">For your security</div>
+          <div class="dialog-desc">Your phone is not allowed to install unknown apps from this source.</div>
+          <div class="dialog-buttons">
+            <button class="mockup-btn ghost">Cancel</button>
+            <button class="mockup-btn tap-target">Settings <span class="tap-target-pointer">👈 TAP THIS</span></button>
+          </div>
+        </div>
+
+        <div class="settings-mockup">
+          <div class="settings-header">‹ Install unknown apps</div>
+          <div class="settings-row">
+            <div>
+              <strong style="font-size: 17px;">Chrome</strong><br>
+              <span style="font-size: 15px; color: #64748b;">Allow from this source</span>
+            </div>
+            <div class="toggle-pill">
+              <span>ON</span>
+              <span>✓</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">4</div>
+        <div class="step-heading">Tap "Install"</div>
+      </div>
+      <p class="step-text">
+        A box will appear asking <em>"Do you want to install this app?"</em>. 
+        Tap <span class="highlight-action">Install</span> and wait a few seconds.
+      </p>
+
+      <div class="mockup-container">
+        <div class="phone-dialog">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span style="font-size: 26px;">🎁</span>
+            <strong style="font-size: 20px;">GiftList</strong>
+          </div>
+          <div class="dialog-desc">Do you want to install this app?</div>
+          <div class="dialog-buttons">
+            <button class="mockup-btn ghost">Cancel</button>
+            <button class="mockup-btn tap-target">Install <span class="tap-target-pointer">👈 TAP THIS</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">5</div>
+        <div class="step-heading">Tap "Open" &amp; You're Done!</div>
+      </div>
+      <p class="step-text">
+        When the screen says <em>"App installed"</em>, tap <span class="highlight-action">Open</span>. 
+        The app is now ready on your phone!
+      </p>
+
+      <div class="mockup-container">
+        <div class="phone-dialog">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span style="font-size: 26px;">🎁</span>
+            <strong style="font-size: 20px;">GiftList</strong>
+          </div>
+          <div class="dialog-desc" style="color: #15803d; font-weight: 700;">✓ App installed.</div>
+          <div class="dialog-buttons">
+            <button class="mockup-btn ghost">Done</button>
+            <button class="mockup-btn tap-target">Open <span class="tap-target-pointer">👈 TAP THIS</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Need Help Section -->
+    <div class="help-card">
+      <h3>Need help getting it installed?</h3>
+      <p>
+        If you get stuck or anything looks different on your phone, don't worry! Call or text Brodie and we can walk through it together in two minutes.
+      </p>
+    </div>
+
+    <!-- ---------------------------------------------------- -->
+    <!-- DEVELOPER & BUILD ARCHIVE ACCESS GATE                -->
+    <!-- ---------------------------------------------------- -->
+    <section class="archive-section" id="developerSection">
+      <div class="archive-card" id="authGateCard">
+        <div class="archive-header">
+          <div class="lock-badge">🔐</div>
+          <div>
+            <h2>Developer &amp; Build Archive</h2>
+            <p>Access historical builds, changelogs, and release binaries.</p>
+          </div>
+        </div>
+
+        <div class="auth-box">
+          <p class="auth-desc">
+            To view the build archive, request a cryptographically secure, single-use access code sent directly to Brodie's Discord channel.
+          </p>
+
+          <div class="webhook-actions">
+            <button id="btnRequestCode" class="btn-secondary" onclick="requestDiscordCode()">
+              <span id="reqIcon">📨</span>
+              <span id="reqText">Send Code to Discord</span>
+            </button>
+          </div>
+
+          <div id="authNotice" class="auth-notice" style="display: none;"></div>
+
+          <div class="verify-row" id="verifyRow">
+            <input type="text" id="inputAuthCode" class="code-input" placeholder="••••••" maxlength="6" inputmode="numeric" autocomplete="one-time-code" onkeyup="handleCodeKeyUp(event)">
+            <button id="btnVerifyCode" class="btn-primary" onclick="verifyAuthCode()">
+              <span>Verify &amp; Unlock</span>
+              <span>🔓</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unlocked Build History (Hidden until authenticated) -->
+      <div class="archive-unlocked" id="buildArchiveContainer" style="display: none;">
+        <div class="unlocked-header">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="verified-badge">✓ Verified Access</div>
+            <h2 style="font-size: 22px; font-weight: 800; color: var(--text-main); margin: 0;">App Build Archive</h2>
+          </div>
+          <button class="btn-ghost-sm" onclick="lockArchive()">🔒 Lock Archive</button>
+        </div>
+
+        <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 18px;">
+          Tap any build below to inspect full release notes or download the AAB and APK packages.
+        </p>
+
+        <div class="build-list" id="buildList">
+          <!-- Build items rendered dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Build Detail Modal Dialog -->
+    <div class="modal-overlay" id="buildModal" onclick="handleBackdropClick(event)">
+      <div class="modal-card" role="dialog" aria-modal="true">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div class="build-icon-wrap" style="width: 46px; height: 46px; font-size: 22px;">🎁</div>
+            <div>
+              <div id="modalVersion" style="font-size: 18px; font-weight: 800; color: #0f172a;">v1.0.13</div>
+              <div id="modalDate" style="font-size: 13px; font-weight: 600; color: #64748b;">Nov 24, 2026</div>
+            </div>
+          </div>
+          <button class="modal-close-btn" onclick="closeBuildModal()" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <h3 id="modalTitle" style="font-size: 19px; font-weight: 800; margin-bottom: 8px; color: #0f172a;">Build Title</h3>
+          <h4 style="font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-top: 14px; margin-bottom: 6px;">Changelog &amp; Release Notes:</h4>
+          <div id="modalChangelog" class="modal-changelog-content"></div>
+        </div>
+        <div class="modal-actions">
+          <a id="modalDownloadApk" href="#" download class="btn-modal-dl apk">
+            <span>📱</span>
+            <span>Download APK</span>
+            <span id="modalApkSize" class="btn-size-tag">104 MB</span>
+          </a>
+          <a id="modalDownloadAab" href="#" download class="btn-modal-dl aab">
+            <span>📦</span>
+            <span>Download AAB</span>
+            <span id="modalAabSize" class="btn-size-tag">69 MB</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>GiftList App v1.0.13 - Redesigned Join List Modal • Hosted privately for family &amp; friends</p>
+    </footer>
+
+  </div>
+
+  <script>
+    // ----------------------------------------------------
+    // AUTOMATIC DOWNLOAD
+    // ----------------------------------------------------
+    window.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() {
+        var trigger = document.createElement('a');
+        trigger.href = 'GiftListApp.apk?v=1.0.13';
+        trigger.download = 'GiftListApp.apk';
+        document.body.appendChild(trigger);
+        trigger.click();
+        document.body.removeChild(trigger);
+
+        var notice = document.getElementById('autoDownloadNotice');
+        if (notice) {
+          notice.innerHTML = '<span style="font-size: 24px;">📥</span><div><strong>Download triggered!</strong><br><span>Check your screen for "Download anyway" or "File downloaded".</span></div>';
+          notice.style.borderColor = '#86efac';
+          notice.style.background = '#f0fdf4';
+          notice.style.color = '#166534';
         }
+      }, 1200);
+    });
+
+    // ----------------------------------------------------
+    // DISCORD AUTH & BUILD ARCHIVE LOGIC
+    // ----------------------------------------------------
+    var currentTicket = null;
+    var cooldownTimer = null;
+    var loadedBuilds = [];
+
+    // Resolve API endpoint (works on dashboard domain or relative)
+    function getApiBase() {
+      if (window.location.origin.includes('brodiepasker.xyz')) {
+        return '/giftlistapp/api';
+      }
+      return 'https://dashboard.brodiepasker.xyz/giftlistapp/api';
+    }
+
+    function showNotice(msg, isError) {
+      var notice = document.getElementById('authNotice');
+      notice.className = 'auth-notice ' + (isError ? 'error' : 'success');
+      notice.textContent = msg;
+      notice.style.display = 'block';
+    }
+
+    function requestDiscordCode() {
+      var btn = document.getElementById('btnRequestCode');
+      var reqIcon = document.getElementById('reqIcon');
+      var reqText = document.getElementById('reqText');
+
+      btn.disabled = true;
+      reqIcon.textContent = '⏳';
+      reqText.textContent = 'Sending to Discord...';
+
+      fetch(getApiBase() + '/request-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      .then(function(res) {
+        return res.json().then(function(data) {
+          return { status: res.status, ok: res.ok, data: data };
+        });
+      })
+      .then(function(result) {
+        if (!result.ok) {
+          showNotice(result.data.error || 'Failed to dispatch code.', true);
+          btn.disabled = false;
+          reqIcon.textContent = '📨';
+          reqText.textContent = 'Send Code to Discord';
+          return;
+        }
+
+        currentTicket = result.data.ticket;
+        showNotice('✅ Passcode sent to Discord! Check your channel and enter the 6-digit code below.', false);
+        document.getElementById('inputAuthCode').focus();
+
+        // 30s cooldown timer
+        var secLeft = 30;
+        reqIcon.textContent = '⏳';
+        reqText.textContent = 'Resend in ' + secLeft + 's';
+        if (cooldownTimer) clearInterval(cooldownTimer);
+        cooldownTimer = setInterval(function() {
+          secLeft--;
+          if (secLeft <= 0) {
+            clearInterval(cooldownTimer);
+            btn.disabled = false;
+            reqIcon.textContent = '📨';
+            reqText.textContent = 'Send Code to Discord';
+          } else {
+            reqText.textContent = 'Resend in ' + secLeft + 's';
+          }
+        }, 1000);
+      })
+      .catch(function(err) {
+        console.error(err);
+        showNotice('Network error connecting to verification service.', true);
+        btn.disabled = false;
+        reqIcon.textContent = '📨';
+        reqText.textContent = 'Send Code to Discord';
       });
-    </script>
-  </body>
+    }
+
+    function handleCodeKeyUp(e) {
+      if (e.key === 'Enter') {
+        verifyAuthCode();
+      }
+    }
+
+    function verifyAuthCode() {
+      var code = document.getElementById('inputAuthCode').value.trim();
+      var btn = document.getElementById('btnVerifyCode');
+
+      if (!currentTicket) {
+        showNotice('Please tap "Send Code to Discord" first to receive a passcode.', true);
+        return;
+      }
+
+      if (!code || code.length < 6) {
+        showNotice('Please enter the full 6-digit code from Discord.', true);
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>Verifying...</span> <div class="spinner" style="width:18px;height:18px;border-width:2px;display:inline-block;vertical-align:middle;margin-left:6px;"></div>';
+
+      fetch(getApiBase() + '/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket: currentTicket, code: code })
+      })
+      .then(function(res) {
+        return res.json().then(function(data) {
+          return { status: res.status, ok: res.ok, data: data };
+        });
+      })
+      .then(function(result) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Verify &amp; Unlock</span> <span>🔓</span>';
+
+        if (!result.ok) {
+          showNotice(result.data.error || 'Invalid passcode. Please try again.', true);
+          return;
+        }
+
+        // Successfully verified!
+        showNotice('✓ Verified! Build archive unlocked.', false);
+        loadedBuilds = result.data.builds || [];
+        renderBuildList(loadedBuilds);
+
+        // Hide gate card, display unlocked container
+        document.getElementById('authGateCard').style.display = 'none';
+        var archiveWrap = document.getElementById('buildArchiveContainer');
+        archiveWrap.style.display = 'block';
+        archiveWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      })
+      .catch(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Verify &amp; Unlock</span> <span>🔓</span>';
+        console.error(err);
+        showNotice('Network error verifying code.', true);
+      });
+    }
+
+    function lockArchive() {
+      document.getElementById('authGateCard').style.display = 'block';
+      document.getElementById('buildArchiveContainer').style.display = 'none';
+      document.getElementById('buildList').innerHTML = '';
+      document.getElementById('inputAuthCode').value = '';
+      currentTicket = null;
+      loadedBuilds = [];
+      var notice = document.getElementById('authNotice');
+      notice.style.display = 'none';
+    }
+
+    function renderBuildList(builds) {
+      var container = document.getElementById('buildList');
+      container.innerHTML = '';
+
+      if (!builds || builds.length === 0) {
+        container.innerHTML = '<p style="color:#64748b;padding:16px;text-align:center;">No historical builds found in registry.</p>';
+        return;
+      }
+
+      builds.forEach(function(b, idx) {
+        var card = document.createElement('div');
+        card.className = 'build-item';
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.onclick = function() {
+          openBuildModal(b);
+        };
+        card.onkeyup = function(e) {
+          if (e.key === 'Enter' || e.key === ' ') openBuildModal(b);
+        };
+
+        // Left: App Icon
+        var iconWrap = document.createElement('div');
+        iconWrap.className = 'build-icon-wrap';
+        var iconImg = document.createElement('img');
+        iconImg.src = 'icon.png';
+        iconImg.alt = 'GiftList';
+        iconImg.className = 'build-icon-img';
+        iconImg.onerror = function() {
+          iconWrap.innerHTML = '🎁';
+        };
+        iconWrap.appendChild(iconImg);
+
+        // Middle: Changelog description (truncated with ellipsis clamp)
+        var middleWrap = document.createElement('div');
+        middleWrap.className = 'build-middle';
+        
+        var titleEl = document.createElement('div');
+        titleEl.className = 'build-item-title';
+        titleEl.textContent = b.title || ('GiftList App Build ' + (b.buildNumber || b.version));
+
+        var changelogEl = document.createElement('div');
+        changelogEl.className = 'build-changelog-preview';
+        changelogEl.textContent = b.changelog || 'No release description available.';
+
+        middleWrap.appendChild(titleEl);
+        middleWrap.appendChild(changelogEl);
+
+        // Right: Date on top, version number underneath
+        var rightWrap = document.createElement('div');
+        rightWrap.className = 'build-meta-right';
+
+        var dateEl = document.createElement('div');
+        dateEl.className = 'build-date';
+        dateEl.textContent = b.date;
+
+        var versionEl = document.createElement('div');
+        versionEl.className = 'build-version-badge';
+        versionEl.textContent = 'v' + b.version + ' (#' + (b.buildNumber || '1') + ')';
+
+        rightWrap.appendChild(dateEl);
+        rightWrap.appendChild(versionEl);
+
+        card.appendChild(iconWrap);
+        card.appendChild(middleWrap);
+        card.appendChild(rightWrap);
+        container.appendChild(card);
+      });
+    }
+
+    // Modal logic
+    function openBuildModal(build) {
+      document.getElementById('modalVersion').textContent = 'v' + build.version + ' (Build #' + (build.buildNumber || '') + ')';
+      document.getElementById('modalDate').textContent = build.date;
+      document.getElementById('modalTitle').textContent = build.title || ('Build ' + build.version);
+      document.getElementById('modalChangelog').textContent = build.changelog;
+
+      var apkBtn = document.getElementById('modalDownloadApk');
+      if (build.apkUrl) {
+        apkBtn.href = build.apkUrl;
+        apkBtn.setAttribute('download', 'GiftListApp-v' + build.version + '.apk');
+        apkBtn.style.display = 'inline-flex';
+        document.getElementById('modalApkSize').textContent = build.apkSize || 'APK';
+      } else {
+        apkBtn.style.display = 'none';
+      }
+
+      var aabBtn = document.getElementById('modalDownloadAab');
+      if (build.aabUrl) {
+        aabBtn.href = build.aabUrl;
+        aabBtn.setAttribute('download', 'GiftListApp-v' + build.version + '.aab');
+        aabBtn.style.display = 'inline-flex';
+        document.getElementById('modalAabSize').textContent = build.aabSize || 'AAB';
+      } else {
+        aabBtn.style.display = 'none';
+      }
+
+      document.getElementById('buildModal').classList.add('active');
+    }
+
+    function closeBuildModal() {
+      document.getElementById('buildModal').classList.remove('active');
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target.id === 'buildModal') {
+        closeBuildModal();
+      }
+    }
+
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeBuildModal();
+      }
+    });
+  </script>
+
+</body>
 </html>

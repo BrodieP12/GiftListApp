@@ -95,7 +95,7 @@ describe('useListDetail Hook', () => {
       await hookResult.handleToggleClaim('item1', null);
     });
 
-    expect(ClaimService.claimItem).toHaveBeenCalledWith('item1', 'user123', 'owner123');
+    expect(ClaimService.claimItem).toHaveBeenCalledWith('item1', 'user123', 'owner123', 'list456');
     expect(ClaimService.unclaimItem).not.toHaveBeenCalled();
   });
 });

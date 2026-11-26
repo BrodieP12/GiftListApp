@@ -1,0 +1,9 @@
+[functions.moderation]
+verify_jwt = false
+
+[functions.moderate-and-upload-image]
+verify_jwt = false
+
+[functions.portal-auth]
+verify_jwt = false
+

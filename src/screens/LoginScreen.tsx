@@ -72,7 +72,7 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
     try {
       await AuthService.login(email, password);
     } catch (error: any) {
-      CrashLogger.error(error);
+      CrashLogger.error(error, 'LoginScreen.handleLogin');
       Alert.alert('Authentication Failed', error.message);
     } finally {
       setLoading(false);

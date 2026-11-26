@@ -1,5 +1,6 @@
 import { supabase } from '../api/supabase';
 import { CrashLogger } from './LoggingService';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 /**
  * RetailerService
@@ -17,6 +18,22 @@ import { CrashLogger } from './LoggingService';
  * the item details in manually instead of being blocked by a broken
  * scrape.
  */
+
+export interface ProductMatchCandidate {
+  title: string;
+  url: string;
+  retailer: string;
+  price: number | null;
+  description: string | null;
+  image: string | null;
+  snippet: string;
+}
+
+export interface FindListingResponse {
+  searchQuery: string;
+  bestMatch: ProductMatchCandidate | null;
+  candidates: ProductMatchCandidate[];
+}
 export interface ScrapedData {
   title?: string;
   price?: number;
@@ -30,6 +47,57 @@ function isValidUrl(urlString: string): boolean {
 }
 
 export const RetailerService = {
+  
+  async findProductListing(
+    productName: string,
+    imageUri?: string | null,
+    preferredRetailers?: string[]
+  ): Promise<FindListingResponse> {
+    const payload: {
+      productName: string;
+      imageUrl?: string;
+      imageBase64?: string;
+      contentType?: string;
+      preferredRetailers?: string[];
+    } = {
+      productName: productName.trim(),
+      ...(preferredRetailers && preferredRetailers.length > 0 ? { preferredRetailers } : {}),
+    };
+
+    if (imageUri) {
+      if(/^https?:\/\//i.test(imageUri)) {
+        payload.imageUrl = imageUri
+      } else {
+        const rendered = await ImageManipulator.manipulate(imageUri)
+          .resize({ width: 800 })
+          .renderAsync();
+     
+          const saved = await rendered.saveAsync({
+            compress: 0.65,
+            format: SaveFormat.JPEG,
+            base64: true
+          });
+          if (saved.base64) {
+            payload.imageBase64 = saved.base64;
+            payload.contentType = 'image/jpeg';
+          }
+        }
+      }
+
+      const { data, error } = await supabase.functions.invoke<FindListingResponse>(
+        'find-product-listing',
+        { body: payload }
+      );
+
+      if (error) {
+        throw new Error(error.message || 'Could not search for product online.');
+      }
+      return data ?? { searchQuery: productName, bestMatch: null, candidates: [] };
+      
+    },
+  
+  
+  
   /**
    * Fetches product metadata for a retailer product page URL.
    *
@@ -54,7 +122,7 @@ export const RetailerService = {
     if (!url || !isValidUrl(url)) return {};
 
     try {
-      const { data, error } = await supabase.functions.invoke('extractProduct', {
+      const { data, error } = await supabase.functions.invoke('extract-product', {
         body: { url },
       });
       if (error) throw error;
@@ -69,6 +137,8 @@ export const RetailerService = {
       return {};
     }
   },
+
+
 
   /** Re-exported so callers (e.g. form validation in the UI) can validate a URL before submitting, without duplicating the parsing logic. */
   isValidUrl,
