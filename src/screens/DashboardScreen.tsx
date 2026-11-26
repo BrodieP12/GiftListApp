@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { useAuth } from '../hooks/useAuth';
 import { useLists } from '../hooks/useLists';
@@ -10,6 +10,7 @@ import { AppStackParamList } from '../navigation/AppNavigator';
 import { Button } from '../components/common/Button';
 import { CreateListModal } from '../components/modals/CreateList';
 import { ShareCodeModal } from '../components/modals/ShareCodeModal';
+import { JoinListModal } from '../components/modals/JoinListModal';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftListRow } from '../components/lists/GiftListRow';
 import { ConfirmationModal } from '../components/modals/Confirmation';
@@ -53,7 +54,6 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
   const [pendingShareCode, setPendingShareCode] = useState('');
 
   const [joinModalVisible, setJoinModalVisible] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
 
   const [archiveDeleteTargetId, setArchiveDeleteTargetId] = useState<string | null>(null);
@@ -94,13 +94,12 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
    * code surfaces the server's error message (or a generic fallback) rather
    * than failing silently.
    */
-  const handleJoinList = async () => {
-    if (!joinCode.trim()) return;
+  const handleJoinList = async (code: string) => {
+    if (!code.trim()) return;
     setJoinLoading(true);
     try {
-      await joinList(joinCode.trim().toUpperCase());
+      await joinList(code.trim().toUpperCase());
       setJoinModalVisible(false);
-      setJoinCode('');
       Alert.alert('Joined!', 'You now have access to that list.');
     } catch (error) {
       Alert.alert('Error', (error as Error).message || 'Invalid share code.');
@@ -225,24 +224,11 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
       />
 
       {/* Join by Share Code Modal */}
-      <ConfirmationModal
+      <JoinListModal
         visible={joinModalVisible}
-        title="Join a List"
-        message=""
-        onConfirm={handleJoinList}
-        onCancel={() => { setJoinModalVisible(false); setJoinCode(''); }}
-        confirmText={joinLoading ? 'Joining...' : 'Join'}
-        customContent={
-          <TextInput
-            style={[styles.joinInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}
-            placeholder="Enter 7-digit code (e.g. ABC1234)"
-            placeholderTextColor={colors.textDim}
-            value={joinCode}
-            onChangeText={t => setJoinCode(t.toUpperCase())}
-            autoCapitalize="characters"
-            maxLength={7}
-          />
-        }
+        onClose={() => setJoinModalVisible(false)}
+        onJoin={handleJoinList}
+        loading={joinLoading}
       />
 
       <ConfirmationModal
@@ -270,9 +256,5 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 30, width: 56, height: 56, borderRadius: 28,
     justifyContent: 'center', alignItems: 'center', elevation: 6,
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
-  },
-  joinInput: {
-    borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 18,
-    fontWeight: '700', textAlign: 'center', letterSpacing: 4, marginTop: 4,
   },
 });
