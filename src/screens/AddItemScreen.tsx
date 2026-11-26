@@ -13,6 +13,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { KeyboardAwareScrollView} from "react-native-keyboard-aware-scroll-view";
 import {CrashLogger} from "../services/LoggingService";
 import { ImageUploadService, ImageUploadError } from "../services/ImageUploadService";
+import { posthog } from '../config/posthog';
 
 /**
  * AddItemScreen
@@ -207,6 +208,11 @@ export const AddItemScreen = () => {
         url,
         listId,
         imageUri: uploadedImageUrl,
+      });
+      posthog?.capture('item_added', {
+        has_description: Boolean(description.trim()),
+        has_image: Boolean(uploadedImageUrl),
+        has_url: Boolean(url.trim()),
       });
       navigation.goBack();
     } catch (e) {

@@ -26,6 +26,7 @@ import { Button } from './Button';
 import { FeedbackService } from '../../services/FeedbackService';
 import { useAuth } from '../../hooks/useAuth';
 import {CrashLogger} from "../../services/LoggingService";
+import { posthog } from '../../config/posthog';
 
 /** Props for {@link FeedbackModal}. `visible` controls the native Modal's
  * visibility; `onClose` is called both when the user cancels and after a
@@ -71,6 +72,10 @@ export const FeedbackModal = ({ visible, onClose }: FeedbackModalProps) => {
         type,
         isAnonymous
       );
+      posthog?.capture('feedback_submitted', {
+        feedback_type: type,
+        is_anonymous: isAnonymous,
+      });
 
       Alert.alert('Thank You', 'We appreciate your feedback!');
       setText('');

@@ -21,6 +21,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useAppTheme, ThemeColors } from '../../theme/ThemeContext';
+import { posthog } from '../../config/posthog';
 
 /** Props for {@link ShareCodeModal}. `shareCode` is the list's join code to
  * display and copy; `onClose` dismisses the modal (via "Done" or the
@@ -48,6 +49,7 @@ export const ShareCodeModal = ({
   // native Alert — no other feedback/analytics side effect here.
   const handleCopy = async () => {
     await Clipboard.setStringAsync(shareCode);
+    posthog?.capture('share_code_copied');
     Alert.alert('Copied!', 'Share code copied to clipboard.');
   };
 

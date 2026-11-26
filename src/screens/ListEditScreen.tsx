@@ -23,6 +23,7 @@ import { RouteProp } from '@react-navigation/native';
 import { AppStackParamList } from '../navigation/AppNavigator';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 import {CrashLogger} from "../services/LoggingService"; // IMPORT THEME Context
+import { posthog } from '../config/posthog';
 
 /**
  * ListEditScreen
@@ -143,6 +144,7 @@ export const ListEditScreen = () => {
         title: title.trim(),
         isPrivate: isPrivate,
       });
+      posthog?.capture('list_updated', { is_private: isPrivate });
       Alert.alert('Success', 'List updated successfully');
       navigation.goBack();
     } catch (error) {
