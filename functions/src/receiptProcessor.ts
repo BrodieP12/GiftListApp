@@ -1,5 +1,9 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { GoogleGenAI } from "@google/genai";
+import {
+    createAiGenerationContext,
+    createVertexAIClient,
+    flushPostHog,
+} from "./aiObservability";
 import { createWorker } from "tesseract.js";
 import { searchImages, SafeSearchType } from "duck-duck-scrape";
 
@@ -42,11 +46,7 @@ export const processReceipt = onRequest(
             }
 
             // 2. Initialize Vertex AI built into Firebase context
-            const ai = new GoogleGenAI({
-                vertexai: true,
-                project: process.env.GCLOUD_PROJECT,
-                location: process.env.FIREBASE_REGION || 'us-central1'
-            });
+            const ai = createVertexAIClient();
 
             const structurePrompt = `
             Analyze this receipt OCR text and extract structured product data.
@@ -77,7 +77,8 @@ export const processReceipt = onRequest(
                 config: {
                     temperature: 0.1,
                     responseMimeType: "application/json"
-                }
+                },
+                ...createAiGenerationContext(),
             });
 
             const jsonText = aiResponse.text || "{}";
@@ -100,6 +101,8 @@ export const processReceipt = onRequest(
         } catch (error: any) {
             console.error(error);
             res.status(500).json({ success: false, error: error.message });
+        } finally {
+            await flushPostHog();
         }
     }
 );

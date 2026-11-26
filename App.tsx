@@ -4,7 +4,6 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { PostHogProvider } from 'posthog-react-native';
 import { AuthProvider } from './src/hooks/useAuth';
 import { RootNavigator } from './src/navigation/AppNavigator';
 import { FeedbackTrigger } from './src/components/common/FeedbackTrigger';
@@ -30,26 +29,19 @@ export default function App() {
   }, []);
 
   return (
-    <PostHogProvider
-      apiKey={process.env.EXPO_PUBLIC_POSTHOG_KEY!}
-      options={{ host: process.env.EXPO_PUBLIC_POSTHOG_HOST }}
-      autocapture={{ captureScreens: false, captureTouches: true }}
-      debug={__DEV__}
-    >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <ErrorBoundary>
-          <ThemeProvider>
-            <AuthProvider>
-              <FeedbackProvider>
-                <FeedbackTrigger>
-                  <RootNavigator />
-                  <StatusBar style="auto" />
-                </FeedbackTrigger>
-              </FeedbackProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </ErrorBoundary>
-      </GestureHandlerRootView>
-    </PostHogProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <AuthProvider>
+            <FeedbackProvider>
+              <FeedbackTrigger>
+                <RootNavigator />
+                <StatusBar style="auto" />
+              </FeedbackTrigger>
+            </FeedbackProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

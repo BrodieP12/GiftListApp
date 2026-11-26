@@ -1,5 +1,9 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { GoogleGenAI } from "@google/genai";
+import {
+    createAiGenerationContext,
+    createVertexAIClient,
+    flushPostHog,
+} from "./aiObservability";
 
 export const manageWishlist = onRequest(
     { timeoutSeconds: 60, memory: "512MiB" },
@@ -7,11 +11,7 @@ export const manageWishlist = onRequest(
         const { owned_items, wishlist_items, budget } = req.body;
         
         try {
-            const ai = new GoogleGenAI({
-                vertexai: true,
-                project: process.env.GCLOUD_PROJECT,
-                location: process.env.FIREBASE_REGION || 'us-central1'
-            });
+            const ai = createVertexAIClient();
 
             const prompt = `
             You are a personal shopper.
@@ -37,12 +37,15 @@ export const manageWishlist = onRequest(
                 config: {
                     temperature: 0.2,
                     responseMimeType: "application/json"
-                }
+                },
+                ...createAiGenerationContext(),
             });
 
             res.json({ success: true, analysis: JSON.parse(aiResponse.text || "{}") });
         } catch (error: any) {
             res.status(500).json({ success: false, error: error.message });
+        } finally {
+            await flushPostHog();
         }
     }
 );

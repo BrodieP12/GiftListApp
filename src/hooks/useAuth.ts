@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import { User } from '../types/models';
 import { UserService, createDefaultUser } from '../services/UserService';
 import { CrashLogger } from '../services/LoggingService';
+import { posthog } from '../config/posthog';
 
 /**
  * Auth state/context module.
@@ -68,13 +69,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const identifiedUserId = useRef<string | null>(null);
+
+  const identifySessionUser = (session: Session) => {
+    const { id, email } = session.user;
+
+    // getSession and Supabase's initial auth event can both report the same
+    // session. Identify once per signed-in user rather than on token refresh.
+    if (!posthog || identifiedUserId.current === id) return;
+
+    posthog.identify(id, email ? { email } : undefined);
+    identifiedUserId.current = id;
+  };
+
+  const clearPostHogIdentity = () => {
+    posthog?.reset();
+    identifiedUserId.current = null;
+  };
 
   useEffect(() => {
     // Load initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) loadProfile(session.user.id, session.user.email ?? '');
-      else setLoading(false);
+      if (session) {
+        identifySessionUser(session);
+        loadProfile(session.user.id, session.user.email ?? '');
+      } else {
+        clearPostHogIdentity();
+        setLoading(false);
+      }
     });
 
     // Listen for auth changes. This single listener covers sign-in,
@@ -84,8 +107,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
+        identifySessionUser(session);
         loadProfile(session.user.id, session.user.email ?? '');
       } else {
+        clearPostHogIdentity();
         setUser(null);
         setLoading(false);
       }
