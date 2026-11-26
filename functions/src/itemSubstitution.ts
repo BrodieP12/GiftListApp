@@ -1,5 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { GoogleGenAI } from "@google/genai";
+import { createAiGenerationContext, createVertexAIClient, flushPostHog } from "./aiObservability";
 
 export const suggestSubstitutions = onRequest(
     { timeoutSeconds: 60, memory: "512MiB" },
@@ -12,11 +12,8 @@ export const suggestSubstitutions = onRequest(
         }
 
         try {
-            const ai = new GoogleGenAI({
-                vertexai: true,
-                project: process.env.GCLOUD_PROJECT,
-                location: process.env.FIREBASE_REGION || 'us-central1'
-            });
+            const ai = createVertexAIClient();
+            const aiContext = createAiGenerationContext();
 
             // If the user specified a preference (e.g., "cheaper", "better quality"), include it
             const prefText = preferences 
@@ -60,7 +57,8 @@ export const suggestSubstitutions = onRequest(
                 config: {
                     temperature: 0.3, // Slightly higher than price analysis to allow for creative product matching
                     responseMimeType: "application/json"
-                }
+                },
+                ...aiContext,
             });
 
             let jsonText = aiResponse.text || "{}";
@@ -77,6 +75,8 @@ export const suggestSubstitutions = onRequest(
         } catch (error: any) {
             console.error("Substitution Error:", error);
             res.status(500).json({ success: false, error: error.message });
+        } finally {
+            await flushPostHog();
         }
     }
 );

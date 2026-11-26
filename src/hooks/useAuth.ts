@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import { User } from '../types/models';
@@ -75,34 +75,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const posthog = usePostHog();
+  const identifiedUserId = useRef<string | null>(null);
+  const hasResolvedAuthState = useRef(false);
 
   useEffect(() => {
-    // Load initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) loadProfile(session.user.id, session.user.email ?? '');
-      else setLoading(false);
-    });
+    const identifySession = (authenticatedSession: Session) => {
+      const { id, email } = authenticatedSession.user;
 
-    // Listen for auth changes. This single listener covers sign-in,
-    // sign-out, and silent token refresh, so `user`/`session` stay in
-    // sync with Supabase Auth without any screen having to poll or
-    // manually re-check auth state.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-        loadProfile(session.user.id, session.user.email ?? '');
+      // Token refreshes can repeat auth callbacks. Identify only when the
+      // authenticated account changes so the SDK's persisted identity covers
+      // subsequent events and automatically captured errors.
+      if (identifiedUserId.current === id) return;
+
+      if (identifiedUserId.current) {
+        posthog?.reset();
+      }
+
+      posthog?.identify(id, {
+        $set: email ? { email } : {},
+      });
+      identifiedUserId.current = id;
+      hasResolvedAuthState.current = true;
+    };
+
+    const clearIdentity = () => {
+      // Clear a persisted PostHog identity when Supabase reports a signed-out
+      // session, including sign-outs initiated outside this device.
+      if (identifiedUserId.current || !hasResolvedAuthState.current) {
+        posthog?.reset();
+      }
+      identifiedUserId.current = null;
+      hasResolvedAuthState.current = true;
+    };
+
+    const applyAuthState = (nextSession: Session | null) => {
+      setSession(nextSession);
+      if (nextSession) {
+        identifySession(nextSession);
+        loadProfile(nextSession.user.id, nextSession.user.email ?? '');
       } else {
+        clearIdentity();
         setUser(null);
         setLoading(false);
       }
+    };
+
+    // Load the persisted session while also subscribing to sign-in, sign-out,
+    // and token-refresh changes from this single source of truth.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      applyAuthState(session);
     });
 
-    // Cleanup: unsubscribe the auth listener on unmount so we don't leak
-    // it (and don't set state on an unmounted provider) if the provider
-    // is ever torn down and re-created.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      applyAuthState(nextSession);
+    });
+
     return () => subscription.unsubscribe();
-  }, []);
+  }, [posthog]);
 
   /**
    * Fetches the app-level profile row for a just-authenticated Supabase
@@ -121,7 +150,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await UserService.createUserProfile(profile);
       }
       setUser(profile);
-      posthog?.identify(uid, { email, name: profile.displayName });
     } catch (error) {
       CrashLogger.error(error, 'AuthProvider.loadProfile');
       setUser(null);
@@ -137,7 +165,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // whether it was triggered by this call or by an external event (e.g.
   // token invalidated, signed out in another tab).
   const logout = async () => {
-    posthog?.reset();
+    posthog?.capture('user_logged_out');
     await supabase.auth.signOut();
   };
 

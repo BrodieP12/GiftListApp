@@ -41,7 +41,6 @@ export const posthog = isPostHogConfigured
           console: [],
         },
       },
-      debug: __DEV__,
       preloadFeatureFlags: true,
     })
   : undefined;

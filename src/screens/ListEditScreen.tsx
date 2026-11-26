@@ -23,6 +23,7 @@ import { RouteProp } from '@react-navigation/native';
 import { AppStackParamList } from '../navigation/AppNavigator';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 import { CrashLogger } from "../services/LoggingService";
+import { posthog } from '../config/posthog';
 import { SUPPORTED_RETAILERS, DEFAULT_PREFERRED_RETAILERS } from '../constants/retailers';
 
 /**
@@ -159,6 +160,10 @@ export const ListEditScreen = () => {
         isPrivate: isPrivate,
         inheritStorePreferences: inheritStores,
         preferredRetailers: inheritStores ? null : selectedRetailers,
+      });
+      posthog?.capture('list_updated', {
+        is_private: isPrivate,
+        uses_custom_retailers: !inheritStores,
       });
       Alert.alert('Success', 'List updated successfully');
       navigation.goBack();

@@ -1,5 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { GoogleGenAI } from "@google/genai";
+import { createAiGenerationContext, createVertexAIClient, flushPostHog } from "./aiObservability";
 import youtubedl from "youtube-dl-exec";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
@@ -65,11 +65,8 @@ export const extractProductFromVideo = onRequest(
             }
 
             // 3. Analyze with Firebase Vertex AI (Multimodal)
-            const ai = new GoogleGenAI({
-                vertexai: true,
-                project: process.env.GCLOUD_PROJECT,
-                location: process.env.FIREBASE_REGION || 'us-central1'
-            });
+            const ai = createVertexAIClient();
+            const aiContext = createAiGenerationContext();
             
             const promptText = `
             Analyze these video frames and metadata to extract E-COMMERCE PRODUCT information.
@@ -104,7 +101,8 @@ export const extractProductFromVideo = onRequest(
                 config: {
                     temperature: 0.1,
                     responseMimeType: "application/json"
-                }
+                },
+                ...aiContext,
             });
 
             res.json({
@@ -118,6 +116,7 @@ export const extractProductFromVideo = onRequest(
         } finally {
             if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
             if (fs.existsSync(framesDir)) fs.rmSync(framesDir, { recursive: true, force: true });
+            await flushPostHog();
         }
     }
 );

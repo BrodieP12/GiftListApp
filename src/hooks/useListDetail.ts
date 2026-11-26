@@ -3,6 +3,7 @@ import { GiftItemUI, ItemClaim } from '../types/models';
 import { ListService } from '../services/ListService';
 import { ClaimService } from '../services/ClaimService';
 import { CrashLogger } from '../services/LoggingService';
+import { posthog } from '../config/posthog';
 
 /**
  * Powers the list-detail screen: the merged view of a list's items plus
@@ -115,8 +116,10 @@ export const useListDetail = (
     try {
       if (currentClaimer === currentUserId) {
         await ClaimService.unclaimItem(itemId);
+        posthog?.capture('item_claim_updated', { action: 'unclaimed' });
       } else {
         await ClaimService.claimItem(itemId, currentUserId, ownerId, listId);
+        posthog?.capture('item_claim_updated', { action: 'claimed' });
       }
     } catch (err) {
       CrashLogger.error(err, 'useListDetail.handleToggleClaim');

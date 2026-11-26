@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Friend } from '../types/models';
 import { FriendService } from '../services/FriendService';
 import { CrashLogger } from '../services/LoggingService';
+import { posthog } from '../config/posthog';
 
 /**
  * Friends/social-graph hook.
@@ -62,6 +63,7 @@ export const useFriends = (userId: string | undefined) => {
   const acceptRequest = async (friendRowId: string) => {
     try {
       await FriendService.acceptRequest(friendRowId);
+      posthog?.capture('friend_request_accepted');
     } catch (err) {
       CrashLogger.error(err, 'useFriends.acceptRequest');
       throw err;

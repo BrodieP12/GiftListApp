@@ -1,3 +1,5 @@
+import { captureGeminiGeneration } from '../_shared/aiObservability.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -39,6 +41,8 @@ Return EXACTLY this JSON:
   "feature_differences": "Explanation"
 }`;
 
+    const traceId = crypto.randomUUID();
+    const startedAt = performance.now();
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
@@ -58,6 +62,16 @@ Return EXACTLY this JSON:
 
     const data = await res.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    await captureGeminiGeneration({
+      traceId,
+      spanName: 'compare_products',
+      input: prompt,
+      output: rawText,
+      latencySeconds: (performance.now() - startedAt) / 1000,
+      httpStatus: res.status,
+      temperature: 0.2,
+      usage: data?.usageMetadata,
+    });
     const comparison = JSON.parse(cleanJson(rawText));
 
     return jsonResponse({ success: true, comparison });

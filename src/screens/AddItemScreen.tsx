@@ -14,6 +14,8 @@ import { KeyboardAwareScrollView} from "react-native-keyboard-aware-scroll-view"
 import {CrashLogger} from "../services/LoggingService";
 import { ImageUploadService, ImageUploadError } from "../services/ImageUploadService";
 import { ProductMatchModal } from '../components/modals/ProductMatchModal';
+import { posthog } from '../config/posthog';
+import { PostHogLog } from '../services/PostHogLogService';
 
 /**
  * AddItemScreen
@@ -103,6 +105,11 @@ export const AddItemScreen = () => {
     try {
       const result = await RetailerService.findProductListing(name, imageUri, effectiveRetailers);
       setLastSearchQuery(result.searchQuery);
+      PostHogLog.info('product_listing_search_completed', {
+        candidate_count: result.candidates.length,
+        has_image: Boolean(imageUri),
+        uses_retailer_preferences: Boolean(effectiveRetailers?.length),
+      });
 
       if (!result.candidates.length) {
         Alert.alert('No Listing Found', 'Could not find a matching online listing. Try a more specific name.');
@@ -272,6 +279,18 @@ export const AddItemScreen = () => {
         url,
         listId,
         imageUri: uploadedImageUrl,
+      });
+      posthog?.capture('item_added', {
+        has_description: Boolean(description.trim()),
+        has_image: Boolean(uploadedImageUrl),
+        has_price: Boolean(price.trim()),
+        has_url: Boolean(url.trim()),
+      });
+      PostHogLog.info('gift_item_created', {
+        has_description: Boolean(description.trim()),
+        has_image: Boolean(uploadedImageUrl),
+        has_price: Boolean(price.trim()),
+        has_url: Boolean(url.trim()),
       });
       navigation.goBack();
     } catch (e) {

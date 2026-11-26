@@ -1,15 +1,9 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import PostHog from 'posthog-react-native';
+import { posthog } from '../config/posthog';
 import { supabase } from '../api/supabase';
 
-/**
- * Shared PostHog client instance used across the app (both inside React components
- * via PostHogProvider and in non-React services).
- */
-export const posthog = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_KEY || '', {
-  host: process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
-});
+export { posthog };
 
 /**
  * AppLogger
@@ -28,7 +22,7 @@ class AppLogger {
     try {
       const isDebug = (await AsyncStorage.getItem('debug_mode')) === 'true';
       if (isDebug) {
-        posthog.capture('app_info', { message, ...params });
+        posthog?.capture('app_info', { message, ...params });
       }
     } catch {
       // Telemetry errors must never crash the app
@@ -50,7 +44,7 @@ class CrashLogger {
   static setContext(key: string, value: string) {
     CrashLogger.contextAttributes[key] = value;
     try {
-      posthog.register({ [key]: value });
+      posthog?.register({ [key]: value });
     } catch {
       // Non-fatal
     }
@@ -70,7 +64,7 @@ class CrashLogger {
 
     // 1. PostHog exception capture
     try {
-      posthog.capture('$exception', {
+      posthog?.capture('$exception', {
         $exception_message: err.message,
         $exception_stack_trace_raw: err.stack || '',
         context,

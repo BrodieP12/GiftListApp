@@ -12,6 +12,7 @@ import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 import { Friend, UserProfile } from '../types/models';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AppStackParamList } from '../navigation/AppNavigator';
+import { posthog } from '../config/posthog';
 
 /**
  * FriendsScreen
@@ -84,6 +85,7 @@ export const FriendsScreen = ({ navigation }: { navigation: NavProp }) => {
   const handleSendRequest = async (targetId: string) => {
     try {
       await sendRequest(targetId);
+      posthog?.capture('friend_request_sent');
       Alert.alert('Request Sent', 'Friend request sent!');
       setSearchResults([]);
       setSearchQuery('');

@@ -1,4 +1,5 @@
 import * as cheerio from 'npm:cheerio@1.0.0';
+import { captureGeminiGeneration } from '../_shared/aiObservability.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -233,6 +234,8 @@ Deno.serve(async (req) => {
     const geminiKey = Deno.env.get('GEMINI_API_KEY') ?? '';
     if (geminiKey && (!name || price === null || !brand) && (pageText || jsonLdBlocks.length > 0)) {
       try {
+        const traceId = crypto.randomUUID();
+        const startedAt = performance.now();
         const geminiRes = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiKey)}`,
           {
@@ -260,6 +263,16 @@ Page Content: ${pageText}`,
         if (geminiRes.ok) {
           const geminiData = await geminiRes.json();
           const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+          await captureGeminiGeneration({
+            traceId,
+            spanName: 'extract_product',
+            input: { url, jsonLdBlocks, pageText },
+            output: raw ?? '',
+            latencySeconds: (performance.now() - startedAt) / 1000,
+            httpStatus: geminiRes.status,
+            temperature: 0.1,
+            usage: geminiData?.usageMetadata,
+          });
           if (raw) {
             const parsed = JSON.parse(raw);
             if (!name && typeof parsed.name === 'string') name = parsed.name.trim();

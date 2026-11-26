@@ -21,6 +21,7 @@ import { AuthService } from '../services/AuthService';
 import { UserService, createDefaultUser } from '../services/UserService';
 import { useAppTheme } from '../theme/ThemeContext';
 import { CrashLogger } from '../services/LoggingService';
+import { posthog } from '../config/posthog';
 
 /**
  * CreateProfile
@@ -243,6 +244,7 @@ export const CreateProfile = ({ navigation }: any) => {
       newUser.legalAcceptance.acceptedDataProcessing = acceptedDataProcessing;
 
       await UserService.createUserProfile(newUser);
+      posthog?.capture('profile_created');
       Alert.alert('Success', 'Account created successfully!');
     } catch (error: any) {
       CrashLogger.error(error);

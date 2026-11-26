@@ -15,6 +15,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { GiftListRow } from '../components/lists/GiftListRow';
 import { ConfirmationModal } from '../components/modals/Confirmation';
 import { CrashLogger } from '../services/LoggingService';
+import { posthog } from '../config/posthog';
 
 /**
  * DashboardScreen
@@ -73,6 +74,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     setCreateLoading(true);
     try {
       const result = await createList(name, isSharable);
+      posthog?.capture('list_created', { is_sharable: isSharable });
       setCreateModalVisible(false);
       if (result.shareCode) {
         setPendingShareCode(result.shareCode);
@@ -99,6 +101,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     setJoinLoading(true);
     try {
       await joinList(code.trim().toUpperCase());
+      posthog?.capture('list_joined');
       setJoinModalVisible(false);
       Alert.alert('Joined!', 'You now have access to that list.');
     } catch (error) {
@@ -122,6 +125,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     if(!archiveDeleteTargetId) return;
     try {
       await archiveList(archiveDeleteTargetId);
+      posthog?.capture('list_archived');
     } catch (error) {
       CrashLogger.error(error, 'DashboardScreen.archiveList');
       Alert.alert('Error', 'Failed to archive list');
@@ -135,6 +139,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     if (!archiveDeleteTargetId) return;
     try {
       await deleteList(archiveDeleteTargetId);
+      posthog?.capture('list_deleted');
     } catch (error) {
       CrashLogger.error(error, 'DashboardScreen.deleteList');
       Alert.alert('Error', 'Failed to delete list');

@@ -23,9 +23,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, DefaultTheme, DarkTheme, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { usePostHog } from 'posthog-react-native';
+import { PostHogProvider } from 'posthog-react-native';
 
-import { useAuth } from '../hooks/useAuth';
+import { AuthProvider, useAuth } from '../hooks/useAuth';
 import { NotificationProvider } from '../hooks/useNotifications';
 import { useAppTheme } from '../theme/ThemeContext';
 import { LoginScreen } from '../screens/LoginScreen';
@@ -40,6 +40,7 @@ import { NotificationSettingsScreen } from '../screens/NotificationSettingsScree
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { ConversationScreen } from '../screens/ConversationScreen';
+import { posthog } from '../config/posthog';
 
 /** Screens available before the user is signed in. */
 export type AuthStackParamList = {
@@ -207,11 +208,9 @@ const AppTabs = () => {
  * renders `AppTabs` for a signed-in `user` or `AuthNavigator` otherwise —
  * this single branch is the entire routing-level auth guard for the app.
  */
-export const RootNavigator = () => {
+const RootNavigatorContent = ({ navigationRef }: { navigationRef: React.RefObject<any> }) => {
   const { user, loading } = useAuth();
-  const { isDark, colors } = useAppTheme();
-  const navigationRef = React.useRef<any>(null);
-  const posthog = usePostHog();
+  const { colors } = useAppTheme();
 
   if (loading) {
     return (
@@ -221,10 +220,16 @@ export const RootNavigator = () => {
     );
   }
 
-  // Merge the app's own theme colors into react-navigation's base
-  // Default/Dark theme so native chrome (headers, tab bar, screen
-  // background) matches the app's light/dark mode instead of
-  // react-navigation's own default palette.
+  return (
+    <NotificationProvider navigationRef={navigationRef}>
+      {user ? <AppTabs /> : <AuthNavigator />}
+    </NotificationProvider>
+  );
+};
+
+export const RootNavigator = () => {
+  const { isDark, colors } = useAppTheme();
+  const navigationRef = React.useRef<any>(null);
   const navTheme = {
     ...(isDark ? DarkTheme : DefaultTheme),
     colors: {
@@ -236,23 +241,34 @@ export const RootNavigator = () => {
       border: colors.border,
     },
   };
+  const content = (
+    <AuthProvider>
+      <RootNavigatorContent navigationRef={navigationRef} />
+    </AuthProvider>
+  );
 
-  // The auth gate: signed-in users get the full tabbed app; anyone else
-  // (including a just-signed-out user) is dropped back to the auth flow.
   return (
-    <NavigationContainer 
+    <NavigationContainer
       theme={navTheme}
       ref={navigationRef}
       onReady={() => {
         posthog?.screen(navigationRef.current?.getCurrentRoute()?.name);
       }}
-      onStateChange={async () => {
+      onStateChange={() => {
         posthog?.screen(navigationRef.current?.getCurrentRoute()?.name);
       }}
     >
-      <NotificationProvider navigationRef={navigationRef}>
-        {user ? <AppTabs /> : <AuthNavigator />}
-      </NotificationProvider>
+      {posthog ? (
+        <PostHogProvider
+          client={posthog}
+          autocapture={{ captureScreens: false, captureTouches: true }}
+          debug={__DEV__}
+        >
+          {content}
+        </PostHogProvider>
+      ) : (
+        content
+      )}
     </NavigationContainer>
   );
 };
