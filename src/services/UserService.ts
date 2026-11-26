@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabase';
 import { User, UserProfile } from '../types/models';
+import { NotificationPreferences } from '../types/notifications';
+import { mergeNotificationPreferences } from '../constants/notifications';
 
 /**
  * UserService
@@ -92,12 +94,22 @@ export const UserService = {
       gdpr_applies: user.legalAcceptance?.gdprApplies ?? false,
       accepted_data_processing: user.legalAcceptance?.acceptedDataProcessing ?? false,
       preferred_retailers: user.preferredRetailers ?? null,
+      notification_preferences: user.notificationPreferences ?? null,
     };
 
     const { error } = await supabase.from('profiles').upsert(payload);
     if (error) {
-      if (error.code === '42703' || error.message?.includes('preferred_retailers')) {
-        delete payload.preferred_retailers;
+      if (
+        error.code === '42703' ||
+        error.message?.includes('preferred_retailers') ||
+        error.message?.includes('notification_preferences')
+      ) {
+        if (error.message?.includes('preferred_retailers') || error.code === '42703') {
+          delete payload.preferred_retailers;
+        }
+        if (error.message?.includes('notification_preferences') || error.code === '42703') {
+          delete payload.notification_preferences;
+        }
         const retry = await supabase.from('profiles').upsert(payload);
         if (retry.error) throw retry.error;
         return;
@@ -136,6 +148,18 @@ export const UserService = {
           if (Array.isArray(parsed) && parsed.length > 0) {
             user.preferredRetailers = parsed;
           }
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+
+    // If notificationPreferences is not present on the DB profile, check local storage fallback
+    if (!user.notificationPreferences) {
+      try {
+        const cachedPrefs = await AsyncStorage.getItem(`@giftlist_notification_preferences_${uid}`);
+        if (cachedPrefs) {
+          user.notificationPreferences = mergeNotificationPreferences(JSON.parse(cachedPrefs));
         }
       } catch {
         // non-blocking
@@ -231,6 +255,39 @@ export const UserService = {
       throw err;
     }
   },
+
+  /**
+   * Updates the user's notification preferences in AsyncStorage and Supabase `public.profiles`.
+   */
+  async updateNotificationPreferences(uid: string, preferences: NotificationPreferences): Promise<void> {
+    const normalized = mergeNotificationPreferences(preferences);
+    try {
+      await AsyncStorage.setItem(`@giftlist_notification_preferences_${uid}`, JSON.stringify(normalized));
+    } catch {
+      // non-blocking
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notification_preferences: normalized })
+        .eq('id', uid);
+
+      if (error) {
+        if (error.code === '42703' || error.message?.includes('notification_preferences')) {
+          console.warn('[UserService.updateNotificationPreferences] Column notification_preferences missing; cached locally.');
+          return;
+        }
+        throw error;
+      }
+    } catch (err: any) {
+      if (err?.code === '42703' || err?.message?.includes('notification_preferences')) {
+        console.warn('[UserService.updateNotificationPreferences] Column notification_preferences missing; cached locally.');
+        return;
+      }
+      throw err;
+    }
+  },
 };
 
 /** Maps a raw `profiles` table row (snake_case) to the full camelCase `User` model, including private fields (legal acceptance, minor protection). Used for loading the current user's own profile. */
@@ -245,6 +302,9 @@ function mapRowToUser(row: any): User {
     birthday: row.birthday ?? null,
     isPremium: row.is_premium ?? false,
     preferredRetailers: Array.isArray(row.preferred_retailers) ? row.preferred_retailers : undefined,
+    notificationPreferences: row.notification_preferences
+      ? mergeNotificationPreferences(row.notification_preferences)
+      : undefined,
     createdAt: row.created_at ?? null,
     minorProtection: {
       isMinor: row.is_minor ?? false,

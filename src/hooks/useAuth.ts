@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../api/supabase';
 import { User } from '../types/models';
+import { NotificationPreferences } from '../types/notifications';
 import { UserService, createDefaultUser } from '../services/UserService';
 import { CrashLogger } from '../services/LoggingService';
 import { usePostHog } from 'posthog-react-native';
@@ -38,6 +39,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   updateUserPreferences: (retailers: string[]) => void;
+  updateNotificationPreferences: (preferences: NotificationPreferences) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -46,6 +48,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: async () => {},
   updateUserPreferences: () => {},
+  updateNotificationPreferences: () => {},
 });
 
 /**
@@ -142,9 +145,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser((prev) => (prev ? { ...prev, preferredRetailers: retailers } : null));
   };
 
+  const updateNotificationPreferences = (notificationPreferences: NotificationPreferences) => {
+    setUser((prev) => (prev ? { ...prev, notificationPreferences } : null));
+  };
+
   return React.createElement(
     AuthContext.Provider,
-    { value: { user, session, loading, logout, updateUserPreferences } },
+    { value: { user, session, loading, logout, updateUserPreferences, updateNotificationPreferences } },
     children
   );
 };

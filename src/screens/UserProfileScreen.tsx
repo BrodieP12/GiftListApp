@@ -85,13 +85,22 @@ export const UserProfileScreen = () => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Preferences</Text>
-        <Text style={styles.description}>Customize which stores and links the product extractor prioritizes.</Text>
+        <Text style={styles.description}>
+          Customize your store extractor links and configure event notifications, custom messages, and quick actions.
+        </Text>
         <Button
           title="Store Preferences"
           variant="secondary"
           onPress={() => navigation.navigate('AccountSettings')}
           icon="sliders-h"
           style={styles.button}
+        />
+        <Button
+          title="Notification Preferences"
+          variant="secondary"
+          onPress={() => navigation.navigate('NotificationSettings')}
+          icon="bell"
+          style={[styles.button, { marginTop: 10 }]}
         />
       </View>
 

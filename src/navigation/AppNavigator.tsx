@@ -26,6 +26,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { usePostHog } from 'posthog-react-native';
 
 import { useAuth } from '../hooks/useAuth';
+import { NotificationProvider } from '../hooks/useNotifications';
 import { useAppTheme } from '../theme/ThemeContext';
 import { LoginScreen } from '../screens/LoginScreen';
 import { CreateProfile } from '../screens/CreateProfile';
@@ -35,6 +36,7 @@ import { AddItemScreen } from '../screens/AddItemScreen';
 import { ListEditScreen } from '../screens/ListEditScreen';
 import { UserProfileScreen } from '../screens/UserProfileScreen';
 import { AccountSettingsScreen } from '../screens/AccountSettingsScreen';
+import { NotificationSettingsScreen } from '../screens/NotificationSettingsScreen';
 import { FriendsScreen } from '../screens/FriendsScreen';
 import { ConversationsScreen } from '../screens/ConversationsScreen';
 import { ConversationScreen } from '../screens/ConversationScreen';
@@ -57,6 +59,7 @@ export type AppStackParamList = {
   ListEdit: { listId: string };
   UserProfileScreen: undefined;
   AccountSettings: undefined;
+  NotificationSettings: undefined;
   Friends: undefined;
   Conversations: undefined;
   Conversation: { conversationId: string };
@@ -126,6 +129,11 @@ const ProfileStack = () => (
       component={AccountSettingsScreen}
       options={{ title: 'Store Preferences' }}
     />
+    <AppStack.Screen
+      name="NotificationSettings"
+      component={NotificationSettingsScreen}
+      options={{ title: 'Notification Preferences' }}
+    />
   </AppStack.Navigator>
 );
 
@@ -181,7 +189,7 @@ const AppTabs = () => {
           return {
             tabBarLabel: 'Profile',
             tabBarStyle:
-              routeName === 'AccountSettings'
+              routeName === 'AccountSettings' || routeName === 'NotificationSettings'
                 ? { display: 'none' }
                 : { backgroundColor: colors.card, borderTopColor: colors.border },
           };
@@ -242,7 +250,9 @@ export const RootNavigator = () => {
         posthog?.screen(navigationRef.current?.getCurrentRoute()?.name);
       }}
     >
-      {user ? <AppTabs /> : <AuthNavigator />}
+      <NotificationProvider navigationRef={navigationRef}>
+        {user ? <AppTabs /> : <AuthNavigator />}
+      </NotificationProvider>
     </NavigationContainer>
   );
 };
