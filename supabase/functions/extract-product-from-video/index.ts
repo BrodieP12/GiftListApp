@@ -1,4 +1,5 @@
 import * as cheerio from 'npm:cheerio@1.0.0';
+import { captureGeminiGeneration } from '../_shared/aiObservability.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -100,6 +101,8 @@ Return EXACTLY this JSON:
       }
     }
 
+    const traceId = crypto.randomUUID();
+    const generationStartedAt = performance.now();
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
@@ -114,11 +117,29 @@ Return EXACTLY this JSON:
     );
 
     if (!res.ok) {
+      captureGeminiGeneration({
+        traceId,
+        spanName: 'video_product_extraction',
+        input: prompt,
+        status: res.status,
+        startedAt: generationStartedAt,
+        temperature: 0.1,
+      });
       throw new Error(`Gemini API returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
     }
 
     const data = await res.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    captureGeminiGeneration({
+      traceId,
+      spanName: 'video_product_extraction',
+      input: prompt,
+      output: rawText,
+      response: data,
+      status: res.status,
+      startedAt: generationStartedAt,
+      temperature: 0.1,
+    });
     const product = JSON.parse(cleanJson(rawText));
 
     return jsonResponse({

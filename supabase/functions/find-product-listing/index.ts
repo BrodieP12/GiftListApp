@@ -1,4 +1,5 @@
 import * as cheerio from 'npm:cheerio@1.0.0';
+import { captureGeminiGeneration } from '../_shared/aiObservability.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,6 +120,8 @@ Return ONLY valid JSON with keys:
 - "searchQuery": concise 4-10 word shopping search query to find this exact product at an online store
 - "descriptionHint": short 1-sentence factual description of the item (color, edition, or key detail)`;
 
+    const traceId = crypto.randomUUID();
+    const generationStartedAt = performance.now();
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiApiKey)}`,
       {
@@ -143,9 +146,29 @@ Return ONLY valid JSON with keys:
       }
     );
 
-    if (!res.ok) return fallback;
+    if (!res.ok) {
+      captureGeminiGeneration({
+        traceId,
+        spanName: 'product_listing_query_refinement',
+        input: prompt,
+        status: res.status,
+        startedAt: generationStartedAt,
+        temperature: 0.1,
+      });
+      return fallback;
+    }
     const data = await res.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    captureGeminiGeneration({
+      traceId,
+      spanName: 'product_listing_query_refinement',
+      input: prompt,
+      output: rawText,
+      response: data,
+      status: res.status,
+      startedAt: generationStartedAt,
+      temperature: 0.1,
+    });
     if (!rawText) return fallback;
 
     const parsed = JSON.parse(rawText);

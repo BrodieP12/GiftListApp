@@ -14,6 +14,7 @@ import { KeyboardAwareScrollView} from "react-native-keyboard-aware-scroll-view"
 import {CrashLogger} from "../services/LoggingService";
 import { ImageUploadService, ImageUploadError } from "../services/ImageUploadService";
 import { ProductMatchModal } from '../components/modals/ProductMatchModal';
+import { posthog } from '../config/posthog';
 
 /**
  * AddItemScreen

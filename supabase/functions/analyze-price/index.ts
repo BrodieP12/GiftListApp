@@ -1,3 +1,5 @@
+import { captureGeminiGeneration } from '../_shared/aiObservability.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -41,6 +43,8 @@ Return EXACTLY this JSON:
   "analysis_notes": "Brief explanation"
 }`;
 
+    const traceId = crypto.randomUUID();
+    const generationStartedAt = performance.now();
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
@@ -55,11 +59,29 @@ Return EXACTLY this JSON:
     );
 
     if (!res.ok) {
+      captureGeminiGeneration({
+        traceId,
+        spanName: 'price_analysis',
+        input: prompt,
+        status: res.status,
+        startedAt: generationStartedAt,
+        temperature: 0.1,
+      });
       throw new Error(`Gemini API returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
     }
 
     const data = await res.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    captureGeminiGeneration({
+      traceId,
+      spanName: 'price_analysis',
+      input: prompt,
+      output: rawText,
+      response: data,
+      status: res.status,
+      startedAt: generationStartedAt,
+      temperature: 0.1,
+    });
     const analysis = JSON.parse(cleanJson(rawText));
 
     return jsonResponse({ success: true, analysis });

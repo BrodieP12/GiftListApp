@@ -17,13 +17,13 @@
  * tab bar) matches the app's light/dark theme rather than react-navigation's
  * defaults.
  */
-import React, { useRef } from 'react';
+import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, DefaultTheme, DarkTheme, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { usePostHog } from 'posthog-react-native';
+import { PostHogProvider } from 'posthog-react-native';
 
 import { useAuth } from '../hooks/useAuth';
 import { NotificationProvider } from '../hooks/useNotifications';
@@ -212,7 +212,6 @@ export const RootNavigator = () => {
   const { user, loading } = useAuth();
   const { isDark, colors } = useAppTheme();
   const navigationRef = React.useRef<any>(null);
-  const posthog = usePostHog();
 
   if (loading) {
     return (
@@ -238,24 +237,33 @@ export const RootNavigator = () => {
     },
   };
 
-  // The auth gate: signed-in users get the full tabbed app; anyone else
-  // (including a just-signed-out user) is dropped back to the auth flow.
-  const navigator = user ? <AppTabs /> : <AuthNavigator />;
+  const navigation = (
+    <NotificationProvider navigationRef={navigationRef}>
+      {user ? <AppTabs /> : <AuthNavigator />}
+    </NotificationProvider>
+  );
 
   return (
-    <NavigationContainer 
+    <NavigationContainer
       theme={navTheme}
       ref={navigationRef}
       onReady={() => {
         posthog?.screen(navigationRef.current?.getCurrentRoute()?.name);
       }}
-      onStateChange={async () => {
+      onStateChange={() => {
         posthog?.screen(navigationRef.current?.getCurrentRoute()?.name);
       }}
     >
-      <NotificationProvider navigationRef={navigationRef}>
-        {user ? <AppTabs /> : <AuthNavigator />}
-      </NotificationProvider>
+      {posthog ? (
+        <PostHogProvider
+          client={posthog}
+          autocapture={{ captureScreens: false, captureTouches: true }}
+        >
+          {navigation}
+        </PostHogProvider>
+      ) : (
+        navigation
+      )}
     </NavigationContainer>
   );
 };
