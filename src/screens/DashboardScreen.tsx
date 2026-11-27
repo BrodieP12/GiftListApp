@@ -103,6 +103,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     setJoinLoading(true);
     try {
       await joinList(code.trim().toUpperCase());
+      posthog?.capture('list_joined');
       setJoinModalVisible(false);
       Alert.alert('Joined!', 'You now have access to that list.');
     } catch (error) {
@@ -126,6 +127,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     if(!archiveDeleteTargetId) return;
     try {
       await archiveList(archiveDeleteTargetId);
+      posthog?.capture('list_archived');
     } catch (error) {
       CrashLogger.error(error, 'DashboardScreen.archiveList');
       Alert.alert('Error', 'Failed to archive list');
@@ -139,6 +141,7 @@ export const DashboardScreen = ({ navigation }: { navigation: DashboardNavProp }
     if (!archiveDeleteTargetId) return;
     try {
       await deleteList(archiveDeleteTargetId);
+      posthog?.capture('list_deleted');
     } catch (error) {
       CrashLogger.error(error, 'DashboardScreen.deleteList');
       Alert.alert('Error', 'Failed to delete list');

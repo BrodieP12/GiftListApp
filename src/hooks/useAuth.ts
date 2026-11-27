@@ -5,7 +5,7 @@ import { User } from '../types/models';
 import { NotificationPreferences } from '../types/notifications';
 import { UserService, createDefaultUser } from '../services/UserService';
 import { CrashLogger } from '../services/LoggingService';
-import { usePostHog } from 'posthog-react-native';
+import { posthog } from '../config/posthog';
 
 /**
  * Auth state/context module.
@@ -74,9 +74,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const posthog = usePostHog();
+  const identifiedUserId = useRef<string | null>(null);
+  const hasResolvedAuthState = useRef(false);
 
   useEffect(() => {
+    // Identity is established once when the auth state gains a user. The
+    // Supabase UUID is stable, while email remains a person property.
+    const syncPostHogIdentity = (nextSession: Session | null) => {
+      if (!nextSession) {
+        // Clear a persisted identity when the app opens without a session and
+        // whenever the current session ends, so a subsequent user is anonymous.
+        if (!hasResolvedAuthState.current || identifiedUserId.current) {
+          posthog?.reset();
+        }
+        identifiedUserId.current = null;
+        hasResolvedAuthState.current = true;
+        return;
+      }
+
+      const { user: authUser } = nextSession;
+      if (identifiedUserId.current === authUser.id) {
+        hasResolvedAuthState.current = true;
+        return;
+      }
+
+      // Account switching without an intervening signed-out state must not
+      // retain the preceding user's analytics identity.
+      if (identifiedUserId.current) {
+        posthog?.reset();
+      }
+
+      posthog?.identify(
+        authUser.id,
+        authUser.email ? { email: authUser.email } : undefined,
+      );
+      identifiedUserId.current = authUser.id;
+      hasResolvedAuthState.current = true;
+    };
+
     // Load initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       syncPostHogIdentity(session);
@@ -123,7 +158,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await UserService.createUserProfile(profile);
       }
       setUser(profile);
-      posthog?.identify(uid, { email, name: profile.displayName });
     } catch (error) {
       CrashLogger.error(error, 'AuthProvider.loadProfile');
       setUser(null);
@@ -139,7 +173,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // whether it was triggered by this call or by an external event (e.g.
   // token invalidated, signed out in another tab).
   const logout = async () => {
-    posthog?.reset();
     await supabase.auth.signOut();
   };
 

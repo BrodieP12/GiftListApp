@@ -1,3 +1,5 @@
+import { captureGeminiGeneration } from '../_shared/aiObservability.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -59,6 +61,8 @@ Return EXACTLY this JSON structure:
       });
     }
 
+    const traceId = crypto.randomUUID();
+    const generationStartedAt = performance.now();
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
@@ -73,11 +77,29 @@ Return EXACTLY this JSON structure:
     );
 
     if (!res.ok) {
+      captureGeminiGeneration({
+        traceId,
+        spanName: 'receipt_product_extraction',
+        input: instruction,
+        status: res.status,
+        startedAt: generationStartedAt,
+        temperature: 0.1,
+      });
       throw new Error(`Gemini API returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
     }
 
     const data = await res.json();
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    captureGeminiGeneration({
+      traceId,
+      spanName: 'receipt_product_extraction',
+      input: instruction,
+      output: rawText,
+      response: data,
+      status: res.status,
+      startedAt: generationStartedAt,
+      temperature: 0.1,
+    });
     const parsedData = JSON.parse(cleanJson(rawText));
 
     const items = Array.isArray(parsedData?.line_items)

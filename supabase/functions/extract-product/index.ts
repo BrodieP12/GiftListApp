@@ -1,4 +1,5 @@
 import * as cheerio from 'npm:cheerio@1.0.0';
+import { captureGeminiGeneration } from '../_shared/aiObservability.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -233,6 +234,12 @@ Deno.serve(async (req) => {
     const geminiKey = Deno.env.get('GEMINI_API_KEY') ?? '';
     if (geminiKey && (!name || price === null || !brand) && (pageText || jsonLdBlocks.length > 0)) {
       try {
+        const geminiPrompt = `Extract product details as JSON with keys: name (string), description (string), price (number or null), image (string), brand (string).
+URL: ${url}
+JSON-LD: ${JSON.stringify(jsonLdBlocks).slice(0, 2000)}
+Page Content: ${pageText}`;
+        const traceId = crypto.randomUUID();
+        const generationStartedAt = performance.now();
         const geminiRes = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiKey)}`,
           {
@@ -243,12 +250,7 @@ Deno.serve(async (req) => {
               contents: [
                 {
                   parts: [
-                    {
-                      text: `Extract product details as JSON with keys: name (string), description (string), price (number or null), image (string), brand (string).
-URL: ${url}
-JSON-LD: ${JSON.stringify(jsonLdBlocks).slice(0, 2000)}
-Page Content: ${pageText}`,
-                    },
+                    { text: geminiPrompt },
                   ],
                 },
               ],
@@ -257,9 +259,28 @@ Page Content: ${pageText}`,
           }
         );
 
-        if (geminiRes.ok) {
+        if (!geminiRes.ok) {
+          captureGeminiGeneration({
+            traceId,
+            spanName: 'product_metadata_extraction',
+            input: geminiPrompt,
+            status: geminiRes.status,
+            startedAt: generationStartedAt,
+            temperature: 0.1,
+          });
+        } else {
           const geminiData = await geminiRes.json();
           const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+          captureGeminiGeneration({
+            traceId,
+            spanName: 'product_metadata_extraction',
+            input: geminiPrompt,
+            output: raw,
+            response: geminiData,
+            status: geminiRes.status,
+            startedAt: generationStartedAt,
+            temperature: 0.1,
+          });
           if (raw) {
             const parsed = JSON.parse(raw);
             if (!name && typeof parsed.name === 'string') name = parsed.name.trim();

@@ -24,6 +24,7 @@ import { AppStackParamList } from '../navigation/AppNavigator';
 import { useAppTheme, ThemeColors } from '../theme/ThemeContext';
 import { CrashLogger } from "../services/LoggingService";
 import { SUPPORTED_RETAILERS, DEFAULT_PREFERRED_RETAILERS } from '../constants/retailers';
+import { posthog } from '../config/posthog';
 
 /**
  * ListEditScreen

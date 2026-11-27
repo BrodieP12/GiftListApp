@@ -11,7 +11,7 @@ import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import { FeedbackProvider } from './src/theme/FeedbackContext';
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { UpdateProvider } from './src/hooks/useAppUpdate';
-import { CrashLogger, posthog } from './src/services/LoggingService';
+import { CrashLogger } from './src/services/LoggingService';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Suppress PostHog network errors from the red LogBox overlay — they are
@@ -30,27 +30,21 @@ export default function App() {
   }, []);
 
   return (
-    <PostHogProvider
-      client={posthog}
-      autocapture={{ captureScreens: false, captureTouches: true }}
-      debug={__DEV__}
-    >
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <ErrorBoundary>
-          <ThemeProvider>
-            <AuthProvider>
-              <UpdateProvider>
-                <FeedbackProvider>
-                  <FeedbackTrigger>
-                    <RootNavigator />
-                    <StatusBar style="auto" />
-                  </FeedbackTrigger>
-                </FeedbackProvider>
-              </UpdateProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </ErrorBoundary>
-      </GestureHandlerRootView>
-    </PostHogProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <AuthProvider>
+            <UpdateProvider>
+              <FeedbackProvider>
+                <FeedbackTrigger>
+                  <RootNavigator />
+                  <StatusBar style="auto" />
+                </FeedbackTrigger>
+              </FeedbackProvider>
+            </UpdateProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }
